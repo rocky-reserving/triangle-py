@@ -1,2 +1,8 @@
-*/.env/*
-*/.pytest_cashe/*
+.env/
+.pytest_cache/
+.build-env/
+
+__pycache__/
+
+.build-env-activate
+.env-activate

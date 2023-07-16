@@ -1,0 +1,9 @@
+README.md
+pyproject.toml
+tests/test_triangle.py
+triangle/__init__.py
+triangle/triangle.py
+triangle_py.egg-info/PKG-INFO
+triangle_py.egg-info/SOURCES.txt
+triangle_py.egg-info/dependency_links.txt
+triangle_py.egg-info/top_level.txt

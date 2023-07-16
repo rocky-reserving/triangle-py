@@ -8,5 +8,9 @@ authors = [
     {name="Andy Weaver", email="andrewayersweaver@gmail.com"}
 ]
 
-[dependencies]
+[description]
+description = "A Python dataclass that extends pandas dataframes and series to use for property-casualty loss development triangles."
+
+[license]
+name = "MIT License"
 
