@@ -8,7 +8,6 @@ using the chain ladder method.
 
 import json
 import os
-
 # import torch
 # from torch.utils.data import DataLoader
 from dataclasses import dataclass
