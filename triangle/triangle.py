@@ -1,23 +1,22 @@
 """
-This module implements the Triangle class, which is used to store and manipulate
-triangle data.
+This module implements the Triangle class, which is used to store and
+manipulate triangle data.
 
-This class also includes methods for perfoming basic loss triangle analysis using
-the chain ladder method.
+This class also includes methods for perfoming basic loss triangle analysis
+using the chain ladder method.
 """
 
-import os
 import json
-import numpy as np
-import pandas as pd
-from datetime import datetime
+import os
 
 # import torch
 # from torch.utils.data import DataLoader
-
 from dataclasses import dataclass
-from typing import Optional, Any
+from datetime import datetime
+from typing import Any, Optional
 
+import numpy as np
+import pandas as pd
 from openpyxl.utils import range_to_tuple
 
 triangle_type_aliases = ["paid", "reported", "case", "incurred"]
@@ -26,51 +25,59 @@ triangle_type_aliases = ["paid", "reported", "case", "incurred"]
 @dataclass
 class Triangle:
     """
-    Create a `Triangle` object. The `Triangle` object is used to store and manipulate
-    triangle data.
+    Create a `Triangle` object. The `Triangle` object is used to store and
+    manipulate triangle data.
+
     Attributes:
     -----------
     id : str
-        The type of triangle the object represents - paid loss, reported loss, etc.
+        The type of triangle the object represents - paid loss, reported
+        loss, etc.
     tri : pd.DataFrame, default=None
         The triangle data. Must be a pandas DataFrame with:
             1. The origin period set as the index.
             2. The development periods set as the column names.
             3. The values set as the values in the DataFrame.
-        If any of these conditions are not met, the triangle data will be set to None.
+        If any of these conditions are not met, the triangle data will
+        be set to None.
     triangle : pd.DataFrame, default=None
         Alias for `tri`.
     acc : pd.Series, default=None
-        The accident period labels. Default is None, in which case the accident period
-        labels will be set to the index of the triangle data.
+        The accident period labels. Default is None, in which case the
+        accident period labels will be set to the index of the triangle
+        data.
     dev : pd.Series, default=None
-        The development period labels. Default is None, in which case the development
-        period labels will be set to the column names of the triangle data.
+        The development period labels. Default is None, in which case the
+        development period labels will be set to the column names of the
+        triangle data.
     cal : pd.DataFrame, default=None
-        The calendar period labels. Default is None, in which case the calendar period
+        The calendar period labels. Default is None, in which case the
+        calendar period
         labels will be calculated from the acc and dev attributes.
     n_acc : int, default=None
-        The number of accident periods in the triangle data. Default is None, in which
-        case the number of accident periods will be calculated from `tri.shape[0]`.
+        The number of accident periods in the triangle data. Default is
+        None, in which case the number of accident periods will be calculated
+        from `tri.shape[0]`.
     n_dev : int, default=None
-        The number of development periods in the triangle data. Default is None, in
-        which case the number of development periods will be calculated from
-        `tri.shape[1]`.
+        The number of development periods in the triangle data. Default is
+        None, in which case the number of development periods will be
+        calculated from `tri.shape[1]`.
     n_cal : int, default=None
-        The number of calendar periods in the triangle data. Default is None, in which
-        case the number of calendar periods will be calculated from the number of unique
-        calendar periods in the `cal` attribute.
+        The number of calendar periods in the triangle data. Default is None,
+        in which case the number of calendar periods will be calculated from
+        the number of unique calendar periods in the `cal` attribute.
     n_vals : int, default=3
-        The number of diagonals used for time-series validation. Default is 3, which
-        corresponds to the 3 most recent diagonals. If `n_vals` is set to 0 or None, no
-        time-series validation will be performed.
+        The number of diagonals used for time-series validation. Default is 3,
+        which corresponds to the 3 most recent diagonals. If `n_vals` is set
+        to 0 or None, no time-series validation will be performed.
     incr_triangle : pd.DataFrame, default=None
-        The incremental triangle data. Default is None, in which case the incremental
-        triangle data will be calculated from the triangle data.
+        The incremental triangle data. Default is None, in which case the
+        incremental triangle data will be calculated from the triangle data.
     X_base : pd.DataFrame, default=None
-        The design matrix for the "base" model, eg a model with accident and development
-        periods as features, and no calendar period effect. Default is None, in which
-        case the design matrix will be calculated from the triangle data.
+        The design matrix for the "base" model, eg a model with accident and
+        development periods as features, and no calendar period effect.
+        Default is None, in which case the design matrix will be calculated
+        from the triangle data.
     y_base : np.ndarray, default=None
         The response vector for the "base" model.
     X_base_train : pd.DataFrame, default=None
@@ -179,8 +186,8 @@ class Triangle:
             if self.incr_triangle is None:
                 self.incr_triangle = self.cum_to_inc(_return=True)
 
-        # create alias for self.tri as self.df that matches the triangle as it is
-        # updated, and does not need to be updated separately
+        # create alias for self.tri as self.df that matches the triangle as
+        # it is updated, and does not need to be updated separately
         self.df = self.tri
         self.base_linear_model()
         self.positive_y = self.y_base.loc[self.y_base > 0].index.values
@@ -236,7 +243,8 @@ class Triangle:
             if id.lower().replace(" ", "_") in triangle_type_aliases:
                 self.id = id.lower().replace(" ", "_")
             else:
-                print(f"The id {id} is not allowed. It must be one of the following:")
+                print(f"""The id {id} is not allowed.
+                It must be one of the following:""")
                 for alias in triangle_type_aliases:
                     print(f"  - {alias}")
                 print()
@@ -325,19 +333,20 @@ class Triangle:
                                   nor the quarter are between 1 and 4.
                      5. 2023q0 -> Raise an error because neither the year
                                   nor the quarter are between 1 and 4.
-                     6. 2q2002 -> year = 2002, quarter = 2, month = 4, day = 1
+                     6. 2q2002 -> year = 2002, quarter = 2, month = 4, day =1
                      7. 2q02   -> Raise an error because the origin column
                                   is ambiguous.
                 4. does the string contain a Q or a q and a dash? If so,
                    assume the dash is separating the year from the quarter,
                    and that the Q or q is closer to the quarter than to the
                    year.
-                     Examples:
-                     --------
-                     1. 2023-Q1 -> year = 2023, quarter = 1, month = 1, day = 1
-                     2. 2021-2q -> year = 2021, quarter = 1, month = 1, day = 1
-                     3. 3q-03   -> year = 2003, quarter = 3, month = 7, day = 1
-                     4. q4-04   -> year = 2004, quarter = 4, month = 10, day = 1
+
+                Examples:
+                --------
+                1. 2023-Q1 -> year = 2023, quarter = 1, month = 1, day = 1
+                2. 2021-2q -> year = 2021, quarter = 1, month = 1, day = 1
+                3. 3q-03   -> year = 2003, quarter = 3, month = 7, day = 1
+                4. q4-04   -> year = 2004, quarter = 4, month = 10, day = 1
         Parameters:
         -----------
         None
@@ -346,9 +355,8 @@ class Triangle:
         None
         """
         import re
-        import pandas as pd
 
-        
+        import pandas as pd
 
         # Function to convert a given year, month, and day to a datetime object
         def convert_to_datetime(year, month, day=1):
@@ -362,7 +370,7 @@ class Triangle:
             # can be converted to integers
             year = None
             month = 1
-            
+
             try:
                 # Attempt to convert the origin value to an integer
                 value = int(origin)
@@ -370,12 +378,14 @@ class Triangle:
                 # Check if the value is a 4-digit integer
                 if 1000 <= value <= 9999:
                     # Convert the 4-digit integer to a datetime object
-                    # assuming January as the month and the first day of the month
+                    # assuming January as the month and the first day of the
+                    # month
                     return convert_to_datetime(value, 1)
                 # Check if the value is a 2-digit integer
                 elif 0 <= value <= 99:
                     # Convert the 2-digit integer to a datetime object
-                    # assuming January as the month and the first day of the month
+                    # assuming January as the month and the first day of the
+                    # month
                     return convert_to_datetime(value + 2000, 1)
                 # Check if the value is a 5-digit integer
                 elif 10000 <= value <= 99999:
@@ -394,10 +404,12 @@ class Triangle:
 
                     # Convert the year-month value to a datetime object
                     # assuming the month is the last 2 digits, the year is
-                    # the first 4 digits, and the day is the first day of the month
+                    # the first 4 digits, and the day is the first day of
+                    # the month
                     return convert_to_datetime(year, month)
-            except:
-                # If the origin value cannot be converted to an integer, continue
+            except ValueError:
+                # If the origin value cannot be converted to an integer,
+                # continue
                 # to the string processing section below
                 print(f"Could not convert {origin} to an integer.")
                 pass
@@ -416,21 +428,25 @@ class Triangle:
                     # an integer, return None values
                     return None, None, None
 
-                # Check if the first part is a month and the second part is a year
+                # Check if the first part is a month and the second part is a
+                # year
                 if 1 <= a <= 12 and 1000 <= b <= 9999:
                     return b, a, None
-                # Check if the first part is a year and the second part is a month
+                # Check if the first part is a year and the second part is a
+                # month
                 elif 1000 <= a <= 9999 and 1 <= b <= 12:
                     return a, b, None
-                # Check if the first part is a quarter and the second part is a year
+                # Check if the first part is a quarter and the second part is
+                # a year
                 elif 1 <= a <= 4 and 1000 <= b <= 9999:
                     return b, None, a
-                # Check if the first part is a year and the second part is a quarter
+                # Check if the first part is a year and the second part is a
+                # quarter
                 elif 1000 <= a <= 9999 and 1 <= b <= 4:
                     return a, None, b
 
-                # If neither of the above conditions are met, raise a ValueError
-                # indicating that the origin column is ambiguous
+                # If neither of the above conditions are met, raise a
+                # ValueError indicating that the origin column is ambiguous
                 raise ValueError("Ambiguous origin column")
 
             # Determine which type of string the origin is and convert
@@ -444,15 +460,15 @@ class Triangle:
                 # and month
                 year, month, _ = get_year_month_quarter(origin, "/")
             elif "Q" in origin.upper() and "-" not in origin:
-                # If the origin contains 'Q' and no dash, assume the 'Q' separates
-                # the year and quarter
+                # If the origin contains 'Q' and no dash, assume the 'Q'
+                # separates the year and quarter
                 origin = re.sub("[-qQ]", "", origin)
                 year, _, quarter = get_year_month_quarter(origin, "Q")
                 if quarter:
                     month = quarter * 3 - 2
             elif "Q" in origin.upper() and "-" in origin:
-                # If the origin contains 'Q' and a dash, assume the dash separates
-                # the year and quarter
+                # If the origin contains 'Q' and a dash, assume the dash
+                # separates the year and quarter
                 origin = origin.upper().replace("Q", "")
                 year, _, quarter = get_year_month_quarter(origin, "-")
                 if quarter:
@@ -472,18 +488,18 @@ class Triangle:
             # indicating that the origin column is invalid
             raise ValueError(f"Invalid origin column: {origin}")
 
-        # Map the convert_origin_to_datetime function to each value in the index
-        # and replace the original index with the new datetime index
+        # Map the convert_origin_to_datetime function to each value in the
+        # index and replace the original index with the new datetime index
         self.tri.index = self.tri.index.map(convert_origin_to_datetime)
 
     def _set_frequency(self) -> None:
         """
         Sets the .frequency attribute by checking if the origin column is in
         monthly, quarterly, or annual frequency:
-            1. If all of the origin values have a month of 1, the origin column is
-            assumed to be in annual frequency.
-            2. Elif all of the origin values have a month of 1, 4, 7, or 10, the
-            origin column is assumed to be in quarterly frequency.
+            1. If all of the origin values have a month of 1, the origin
+            column is assumed to be in annual frequency.
+            2. Elif all of the origin values have a month of 1, 4, 7, or 10,
+            the origin column is assumed to be in quarterly frequency.
             3. Else, the origin column is assumed to be in monthly frequency.
         """
 
@@ -528,7 +544,10 @@ class Triangle:
         if self.frequency == "A":
             formatted_df.index = self.tri.index.strftime("%Y")
         elif self.frequency == "Q":
-            formatted_df.index = self.tri.index.to_period("Q").strftime("%YQ%q")
+            formatted_df.index = (self.tri
+                                  .index
+                                  .to_period("Q")
+                                  .strftime("%YQ%q"))
         else:
             formatted_df.index = self.tri.index.strftime("%Y-%m")
 
@@ -538,16 +557,16 @@ class Triangle:
         """
         Converts the triangle object to json, to prepare for an API call
         """
+        
         # start from a dictionary
         out_dict = {
-            "id": self.id if self.id is not None else None,
-            # "tri": self.tri.to_dict() if self.tri is not None else None,
-            # "triangle": self.triangle.to_dict() if self.triangle is not None else None,
-            # "incrTriangle": self.incr_triangle.to_dict()
-            # if self.incr_triangle is not None
-            # else None,
-            "XBase": self.X_base.to_dict() if self.X_base is not None else None,
-            "yBase": self.y_base.tolist() if self.y_base is not None else None,
+            "id": self.id,
+            "XBase": self.X_base.to_dict()
+            if self.X_base is not None
+            else None,
+            "yBase": self.y_base.tolist()
+            if self.y_base is not None
+            else None,
             "XBaseTrain": self.X_base_train.to_dict()
             if self.X_base_train is not None
             else None,
@@ -563,16 +582,24 @@ class Triangle:
             "hasCumModelFile": self.has_cum_model_file
             if self.has_cum_model_file is not None
             else None,
-            "isCumModel": self.is_cum_model if self.is_cum_model is not None else None,
-            "nCols": self.n_cols if self.n_cols is not None else None,
-            "nRows": self.n_rows if self.n_rows is not None else None,
+            "isCumModel": self.is_cum_model
+            if self.is_cum_model is not None
+            else None,
+            "nCols": self.n_cols
+            if self.n_cols is not None
+            else None,
+            "nRows": self.n_rows
+            if self.n_rows is not None
+            else None,
         }
 
         # convert datetime index to string
         if self.tri is not None:
             temp_tri = self.tri.copy()
             temp_tri.index = temp_tri.index.strftime("%Y-%m")
-            out_dict["tri"] = temp_tri.to_dict() if self.tri is not None else None
+            out_dict["tri"] = (temp_tri.to_dict()
+                               if self.tri is not None
+                               else None)
         else:
             out_dict["tri"] = None
 
@@ -585,7 +612,8 @@ class Triangle:
 
         if self.incr_triangle is not None:
             temp_incr_triangle = self.incr_triangle.copy()
-            temp_incr_triangle.index = temp_incr_triangle.index.strftime("%Y-%m")
+            temp_incr_triangle.index = (temp_incr_triangle.index
+                                        .strftime("%Y-%m"))
             out_dict["incrTriangle"] = temp_incr_triangle.to_dict()
         else:
             out_dict["incrTriangle"] = None
@@ -596,7 +624,9 @@ class Triangle:
         return out_json
 
     @classmethod
-    def from_dataframe(cls, df: pd.DataFrame, id: Optional[str] = None) -> "Triangle":
+    def from_dataframe(cls,
+                       df: pd.DataFrame,
+                       id: Optional[str] = None) -> "Triangle":
         """
         Create a Triangle object from a pandas DataFrame.
 
@@ -642,9 +672,10 @@ class Triangle:
         Triangle
             A Triangle object with data loaded from the clipboard.
         """
-        # Read data from the clipboard, assuming the first row is the development period
-        # and the first `origin_columns` columns should make up either an index or a
-        # multi-index for the origin period in the resulting DataFrame
+        # Read data from the clipboard, assuming the first row is the
+        # development period and the first `origin_columns` columns should
+        # make up either an index or a multi-index for the origin period
+        # in the resulting DataFrame
         df = pd.read_clipboard(header=None)
 
         # set the first row to be the headers
@@ -670,7 +701,7 @@ class Triangle:
 
         # make sure the index is numeric/integer
         df.index = df.index.astype(str).astype(int)
-        
+
         # do the same for the columns
         df.columns = df.columns.astype(str).astype(float).astype(int)
 
@@ -724,9 +755,11 @@ class Triangle:
         origin_columns : int
             The number of columns used for the origin period.
         sheet_name : str, optional
-            The name of the sheet in the Excel file containing the triangle data. If not provided, the first sheet will be used.
+            The name of the sheet in the Excel file containing the triangle
+            data. If not provided, the first sheet will be used.
         sheet_range : str, optional
-            A string containing the range of cells to read from the Excel file. The range should be in the format "A1:B2".
+            A string containing the range of cells to read from the Excel
+            file. The range should be in the format "A1:B2".
         Returns:
         --------
         Triangle
@@ -739,9 +772,10 @@ class Triangle:
             c1, r1, c2, r2 = idx
 
             # read in the subset of the excel file
-            df = pd.read_excel(filename, header=None, sheet_name=sheet_name).iloc[
-                (r1 - 1) : (r2), (c1 - 1) : (c2)
-            ]
+            df = (pd.read_excel(filename,
+                                header=None,
+                                sheet_name=sheet_name)
+                  .iloc[(r1 - 1):(r2), (c1 - 1):(c2)])
 
             # set the column names as the first row
             df.columns = df.iloc[0]
@@ -780,7 +814,8 @@ class Triangle:
         Returns:
         --------
         Triangle
-            A Triangle object with data loaded from the Taylor Ashe sample data.
+            A Triangle object with data loaded from the Taylor Ashe sample
+            data.
         """
         # Get the current directory
         current_dir = os.path.dirname(os.path.realpath(__file__))
@@ -821,9 +856,9 @@ class Triangle:
     @classmethod
     def from_dahms(cls) -> tuple:
         """
-        Create a Triangle object from the Dahms sample data. This sample data contains
-        both a reported and a paid triangle, so this method returns a tuple containing
-        both triangles.
+        Create a Triangle object from the Dahms sample data. This sample data
+        contains both a reported and a paid triangle, so this method returns
+        a tuple containing both triangles.
 
         Return is of the form (rpt, paid).
 
@@ -834,14 +869,17 @@ class Triangle:
         Returns:
         --------
         tuple[Triangle, Triangle]
-            A tuple containing a Triangle object with data loaded from the reported
-            triangle, and a Triangle object with data loaded from the paid triangle.
+            A tuple containing a Triangle object with data loaded from the
+            reported triangle, and a Triangle object with data loaded from
+            the paid triangle.
         """
         # Get the current directory
         current_dir = os.path.dirname(os.path.realpath(__file__))
 
         # Construct the file path to the sample data
-        data_file = os.path.join(current_dir, "data", "dahms reserve triangles.xlsx")
+        data_file = os.path.join(current_dir,
+                                 "data",
+                                 "dahms reserve triangles.xlsx")
 
         # Read the data from the CSV file
         paid = cls.from_excel(
@@ -870,8 +908,8 @@ class Triangle:
         Returns:
         --------
         pd.DataFrame
-            The triangle data, formatted as a dataframe, and with the origin period
-            formatting applied
+            The triangle data, formatted as a dataframe, and with the origin
+            period formatting applied
         """
         # check that the index is a datetime index, and if not, convert it
         if not isinstance(self.tri.index, pd.DatetimeIndex):
@@ -889,10 +927,12 @@ class Triangle:
         # same shape as original triangle
         cal = self.tri.copy()
 
-        # start by setting each cell equal to the number of months since year 0
+        # start by setting each cell equal to the number of months since
+        # year 0
         for c in cal.columns.tolist():
-            cal[c] = cal.index.year.astype(int) - cal.index.year.astype(int).min()
-            +(cal.index.month.astype(int) - cal.index.month.astype(int).min())
+            cal[c] = ((cal.index.year.astype(int) - cal.index.year.astype(int).min()) +
+                      (cal.index.month.astype(int) - cal.index.month.astype(int).min()))
+                      
             # then add the column name as an integer
             cal[c] += int(c) / cal.columns.to_series().astype(int).min()
 
@@ -1397,13 +1437,17 @@ class Triangle:
 
     def ata_summary(self) -> pd.DataFrame:
         """
-        Produces a fixed summary of the age-to-age factors for the triangle data.
+        Produces a fixed summary of the age-to-age factors for the triangle
+        data.
 
         Contains the following:
             - Triangle of age-to-age factors
-            - Volume weighted average age-to-age factors for all years, 5 years, 3 years, and 2 years
-            - Simple average age-to-age factors for all years, 5 years, 3 years, and 2 years
-            - Medial average age-to-age factors for 5 years, excluding high, low, and high/low values
+            - Volume weighted average age-to-age factors for all years,
+              5 years, 3 years, and 2 years
+            - Simple average age-to-age factors for all years, 5 years,
+              3 years, and 2 years
+            - Medial average age-to-age factors for 5 years, excluding
+              high, low, and high/low values
         """
 
         triangle = self
