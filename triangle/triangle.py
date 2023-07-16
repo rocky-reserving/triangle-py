@@ -348,6 +348,8 @@ class Triangle:
         import re
         import pandas as pd
 
+        
+
         # Function to convert a given year, month, and day to a datetime object
         def convert_to_datetime(year, month, day=1):
             # Using pandas to_datetime function to create a datetime object
@@ -356,6 +358,11 @@ class Triangle:
 
         # Function to convert origin values to datetime objects
         def convert_origin_to_datetime(origin):
+            # default values -- these will be overwritten if the origin column
+            # can be converted to integers
+            year = None
+            month = 1
+            
             try:
                 # Attempt to convert the origin value to an integer
                 value = int(origin)
@@ -392,6 +399,7 @@ class Triangle:
             except:
                 # If the origin value cannot be converted to an integer, continue
                 # to the string processing section below
+                print(f"Could not convert {origin} to an integer.")
                 pass
 
             # Function to extract year, month, and quarter from a string
@@ -450,6 +458,11 @@ class Triangle:
                 if quarter:
                     month = quarter * 3 - 2
 
+            # If the year value is None, raise a ValueError indicating that
+            # the origin column is invalid
+            if year is None:
+                raise ValueError(f"Invalid origin: {origin}")
+
             # If both year and month values are found, convert them to a
             # datetime object
             if year and month:
@@ -457,7 +470,7 @@ class Triangle:
 
             # If none of the above conditions are met, raise a ValueError
             # indicating that the origin column is invalid
-            raise ValueError("Invalid origin column")
+            raise ValueError(f"Invalid origin column: {origin}")
 
         # Map the convert_origin_to_datetime function to each value in the index
         # and replace the original index with the new datetime index
@@ -964,15 +977,16 @@ class Triangle:
 
         return ata
 
-    def _vwa(self, n: int = None, tail: float = 1.0) -> pd.DataFrame:
+    def _vwa(self, n: int | str = None, tail: float = 1.0) -> pd.DataFrame:
         """
         Calculate the volume weighted average (VWA) of the triangle data.
 
         Parameters:
         -----------
-        n: int
-            The number of periods to use in the VWA calculation. If None, use
-            all available periods.
+        n: int | str
+            The number of periods to use in the VWA calculation. If "all", use
+            all available periods. If None, use all available periods.
+            Default is None.
         tail: float
             The tail factor to use in the VWA calculation. Default is 1.0, or
             no tail factor.
@@ -988,11 +1002,14 @@ class Triangle:
             np.zeros(self.tri.shape[1]), index=self.tri.columns, dtype=float
         )
 
+        if isinstance(n, str):
+            n = None if n.lower() != "all" else "all"
+
         # if n is None, use all available periods
-        is_all = n is None
+        is_all = n is None or n == "all"
 
         # need a value for n in the loop below
-        n2 = n if n is not None else self.tri.shape[0]
+        n2 = n if n is not None and n != "all" else self.tri.shape[0]
 
         # loop through the columns in the triangle data (excl. the last column)
         for i in range(self.tri.shape[1] - 1):
@@ -1012,15 +1029,15 @@ class Triangle:
 
         return vwa
 
-    def _ave_ata(self, n: int = None, tail: float = 1.0) -> pd.Series:
+    def _ave_ata(self, n: int | str = None, tail: float = 1.0) -> pd.Series:
         """
         Calculate the average age-to-age factor (Ave-ATA) of the triangle data.
 
         Parameters:
         -----------
-        n: int
-            The number of periods to use in the Ave-ATA calculation. If None, use
-            all available periods.
+        n: int | str
+            The number of periods to use in the Ave-ATA calculation. If "all", use
+            all available periods. If None, use all available periods.
         tail: float
             The tail factor to use in the Ave-ATA calculation. Default is 1.0, or
             no tail factor.
@@ -1031,23 +1048,20 @@ class Triangle:
             The Ave-ATA triangle data. Shape is the same as the number of columns
             in the triangle data, with the index set to the column names.
         """
-        # instantiate the ave-ata results - a series whose length is equal to the number of
-        # columns in the triangle data, with the index set to the column names
+        # instantiate the ave-ata results - a series whose length is equal to the number
+        # of columns in the triangle data, with the index set to the column names
         ave_ata = pd.Series(
             np.zeros(self.tri.shape[1]), index=self.tri.columns, dtype=float
         )
 
+        if isinstance(n, str):
+            n = None if n.lower() != "all" else "all"
+
         # if n is None, use all available periods
-        is_all = n is None
+        is_all = n is None or n == "all"
 
         # need a value for n in the loop below
-        n2 = n if n is not None else self.tri.shape[0]
-
-        # # get the triangle
-        # tri = self.tri
-
-        # # get the triangle of age-to-age factors
-        # ata = self._ata_tri()
+        n2 = n if n is not None and n != "all" else self.tri.shape[0]
 
         # loop through the columns in the triangle data (excl. the last column)
         for i, column in enumerate(self.tri.columns[:-1]):
@@ -1069,18 +1083,19 @@ class Triangle:
         return ave_ata
 
     def _medial_ata(
-        self, n: int = None, tail: float = 1.0, excludes: str = "hl"
+        self, n: int | str = None, tail: float = 1.0, excludes: str = "hl"
     ) -> pd.Series:
         """
         Calculate the medial age-to-age factor (Medial-ATA) of the triangle data. This
-        excludes one or more of the values in the average calculation. Once the values are
-        removed, the average is calculated as a normal average.
+        excludes one or more of the values in the average calculation. Once the values 
+        are removed, the average is calculated as a normal average.
 
         Parameters:
         -----------
-        n: int
-            The number of periods to use in the Medial-ATA calculation. If None, use
-            all available periods.
+        n: int | str
+            The number of periods to use in the Medial-ATA calculation. If "all", use
+            all available periods. If None, use all available periods.
+            Default is None.
         tail: float
             The tail factor to use in the Medial-ATA calculation. Default is 1.0, or
             no tail factor.
@@ -1102,26 +1117,29 @@ class Triangle:
             The Medial-ATA triangle data. Shape is the same as the number of columns
             in the triangle data, with the index set to the column names.
         """
-        # instantiate the medial-ata results - a series whose length is equal to the number of
-        # columns in the triangle data, with the index set to the column names
+        # instantiate the medial-ata results - a series whose length is equal to the
+        # number of columns in the triangle data, with the index set to the column names
         medial_ata = pd.Series(
             np.zeros(self.tri.shape[1]), index=self.tri.columns, dtype=float
         )
 
-        # default if can't calculate this is to use the simple average
-        default = self._vwa(n=n, tail=tail)
+        if isinstance(n, str):
+            n = None if n.lower() != "all" else "all"
 
         # if n is None, use all available periods
-        is_all = n is None
+        is_all = n is None or n == "all"
+
+        # need a value for n in the loop below
+        n2 = n if n is not None and n != "all" else self.tri.shape[0]
+
+        # default if can't calculate this is to use the simple average
+        default = self._vwa(n=n, tail=tail)
 
         # if the string contains 'h', exclude the high value, 'l' excludes the low value,
         # and 'm' excludes the median value
         exclude_high = "h" in excludes.lower()
         exclude_low = "l" in excludes.lower()
         exclude_median = "m" in excludes.lower()
-
-        # need a value for n in the loop below
-        n2 = n if n is not None else self.tri.shape[0]
 
         # loop through the columns in the triangle data (excl. the last column)
         for i, column in enumerate(self.tri.columns[:-1]):
@@ -1149,7 +1167,14 @@ class Triangle:
                 if exclude_low:
                     temp_column = temp_column.drop(temp_column.idxmin())
                 if exclude_median:
-                    temp_column = temp_column.drop(temp_column.median())
+                    # get id of median value
+                    median_id = temp_column.shape[0] // 2
+                    
+                    # drop the median value whose id is the median_id (don't worry about
+                    # the case where there are an even number of values, since the
+                    # median id will be the lower of the two middle values, which is
+                    # what we want)
+                    temp_column = temp_column.drop(temp_column.index[median_id])
 
                 # calculate the Medial-ATA
                 medial_ata[column] = temp_column.mean(skipna=True)
@@ -1179,9 +1204,9 @@ class Triangle:
         ave_type: str
             The type of average to use. Options are 'triangle', 'vwa', 'simple',
             and 'medial'. Default is 'triangle'.
-        n: int
-            The number of periods to use in the average calculation. If None, use
-            all available periods. If ave_type is 'triangle', this parameter is
+        n: int | str
+            The number of periods to use in the average calculation. If None, or "all",
+            use all available periods. If ave_type is 'triangle', this parameter is
             ignored.
         tail: float
             The tail factor to use in the average calculation. Default is 1.0, or
@@ -1636,7 +1661,7 @@ class Triangle:
         self.X_id = pd.DataFrame(
             dict(
                 accident_period=melted[acc].astype(int).values,
-                development_period=melted[dev].astype(int).values,
+                development_period=melted[dev].astype(float).astype(int).values,
             )
         )
         self.X_id["calendar_period"] = (
