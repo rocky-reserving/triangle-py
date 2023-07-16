@@ -3,9 +3,9 @@ import numpy as np
 import pytest
 import sys
 
-sys.path.append("../src/py/")
+sys.path.append("../triangle")
 
-from Triangle.triangle.triangle import Triangle
+from triangle import Triangle
 
 @pytest.fixture
 def test_triangle():
@@ -70,3 +70,29 @@ def test_cal_init(test_triangle):
 def test_n_rows(test_triangle):
     t = test_triangle
     assert t.n_rows == t.n_acc, f"TRI-017 - Triangle.n_rows is not equal to Triangle.n_acc: {t.n_rows} != {t.n_acc}"
+
+def test_from_clipboard(test_triangle):
+    t = test_triangle
+    
+    # write triangle data frame to clipboard
+    t.tri.reset_index(drop=True).reset_index().to_clipboard(index=False)
+
+    # read new triangle from clipboard
+    # df2 = pd.read_clipboard()
+    t2 = Triangle.from_clipboard(id="t2")
+
+    # check that the two triangles are equal
+    assert np.allclose(t2.tri.fillna(0).values, t.tri.fillna(0).values, rtol=1e-3, atol=1e-3), f"""TRI-018 - Triangle.from_clipboard did not read in the same triangle as Triangle.from_dataframe:
+    t2.tri: {t2.tri.values}
+    t.tri: {t.tri.values}"""
+
+def test_from_csv():
+    filename = "../triangle/data/mack1994.csv"
+    t = Triangle.from_csv(filename, id="mack")
+    t.tri = t.tri.astype(float).reset_index(drop=True)
+    t2 = pd.read_csv(filename, index_col=0, header=0).astype(float).reset_index(drop=True)
+
+    # make sure the two triangles are equal
+    assert np.allclose(t.tri.fillna(0).values, t2.fillna(0).values, rtol=1e-3, atol=1e-3), f"""TRI-019 - Triangle.from_csv did not read in the same triangle as pd.read_csv:
+    t.tri: {t.tri}
+    t2: {t2}"""

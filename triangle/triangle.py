@@ -650,13 +650,16 @@ class Triangle:
                 df[c]
                 .astype(str)
                 .str.replace(",", "")
-                .str.replace(".", "")
+                # .str.replace(".", "")
                 .str.replace(" ", "")
                 .astype(float)
             )
 
+        # make sure the index is numeric/integer
         df.index = df.index.astype(str).astype(int)
-        # print(df.index)
+        
+        # do the same for the columns
+        df.columns = df.columns.astype(str).astype(float).astype(int)
 
         # Create and return a Triangle object
         return cls(id=id, tri=df, triangle=df)
