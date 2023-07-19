@@ -1772,20 +1772,10 @@ class Triangle:
         trends = start.copy()
         # for each column in the design matrix,
         for i, c in enumerate(start.columns.tolist()):
-            # if it's the very last column, set it equal to itself
-            if i == (start.shape[1] - 1):
+            if i == 0:  # do not adjust the very first column
                 trends[c] = start[c].values
-
-            # do not adjust the very first column
-            elif i == 0:
-                trends[c] = start[c].values
-
-            # otherwise, if any column to the right of the current column
-            # is equal to 1, set the current column equal to 1
-            else:
-                trends[c] = np.where(start.iloc[:, i + 1:].sum(axis=1) > 0,
-                                     1,
-                                     0)
+            else:  # if the current column or any column to the right of the current column is equal to 1
+                trends[c] = np.where(start.iloc[:, i:].sum(axis=1) > 0, 1, 0)
 
         return trends
         

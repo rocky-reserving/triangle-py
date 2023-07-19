@@ -679,6 +679,41 @@ def test_create_design_matrix_levels(test_triangle, test_dm_ay_levels):
     df: {df}
     expected_df: {expected_df}"""
 
+def test_create_design_matrix_trends1_types(test_triangle, test_dm_ay_trends):
+    t = test_triangle
+    expected_df = test_dm_ay_trends
+    print(f"expected_df: {expected_df}")
+    print(f"expected_df.shape: {expected_df.shape}")
+
+    # get the design matrix from the triangle object
+    df = t.create_design_matrix_trends(t.X_id['accident_period'], z=4, s="accident_period")
+    print(f"df: {df}")
+    print(f"df.shape: {df.shape}")
+
+    # make sure the dtypes of the columns are the same
+    for i, c in enumerate(df.columns.tolist()):
+        print(f"df[c].dtype: {df[c].dtype}")
+        print(f"expected_df[c].dtype: {expected_df[c].dtype}")
+        assert df[c].dtype == expected_df[c].dtype, f"""TRI-043-1-{i+1} -
+        Triangle.create_design_matrix_trends did not return the same dtypes as expected:
+        df[c].dtype: {df[c].dtype}
+        expected_df[c].dtype: {expected_df[c].dtype}"""
+
+def test_create_design_matrix_trends1_values(test_triangle, test_dm_ay_trends):
+    t = test_triangle
+    expected_df = test_dm_ay_trends
+
+    # get the design matrix from the triangle object
+    df = t.create_design_matrix_trends(t.X_id['accident_period'], z=4, s="accident_period")
+    
+    # Compare each column
+    for i, col in enumerate(df.columns.tolist()):
+        assert df[col].equals(expected_df[col]), f"""TRI-043-2-{i+1} -
+        Difference found in column {col}:
+        df: {df[col]}
+        expected_df: {expected_df[col]}"""
+    
+
 def test_create_design_matrix_trends1(test_triangle, test_dm_ay_trends):
     t = test_triangle
     expected_df = test_dm_ay_trends
@@ -690,8 +725,15 @@ def test_create_design_matrix_trends1(test_triangle, test_dm_ay_trends):
     print(f"df: {df}")
     print(f"df.shape: {df.shape}")
 
+    # make sure the dtypes of the columns are the same
+
     # make sure the design matrix is the same as the expected design matrix
-    assert are_dfs_equal(df,expected_df), f"""TRI-043-A -
+    assert df.equals(expected_df), f"""TRI-043-A1 -
+    Triangle.create_design_matrix_trends did not return the same design matrix as expected:
+    df: {df}
+    expected_df: {expected_df}"""
+
+    assert are_dfs_equal(df,expected_df), f"""TRI-043-A2 -
     Triangle.create_design_matrix_trends did not return the same design matrix as expected:
     df: {df}
     expected_df: {expected_df}"""
