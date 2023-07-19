@@ -58,27 +58,11 @@ def test_dm_ay_trends():
     build test design matrix
     """
     df = pd.DataFrame({
-        'accident_period':[2000, 2001, 2002, 2003,
-                           2000, 2001, 2002, 2003,
-                           2000, 2001, 2002, 2003,
-                           2000, 2001, 2002, 2003],
-        'accident_period_2001':[0, 1, 1, 1,
-                                0, 1, 1, 1,
-                                0, 1, 1, 1,
-                                0, 1, 1, 1],
-        'accident_period_2002':[0, 0, 1, 1,
-                                0, 0, 1, 1,
-                                0, 0, 1, 1,
-                                0, 0, 1, 1],
-        'accident_period_2003':[0, 0, 0, 1,
-                                0, 0, 0, 1,
-                                0, 0, 0, 1,
-                                0, 0, 0, 1]
-    })
-
+        'accident_period':[2000, 2001, 2002, 2003, 2000, 2001, 2002, 2003, 2000, 2001, 2002, 2003, 2000, 2001, 2002, 2003],
+        'accident_period_2001':[0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1],
+        'accident_period_2002':[0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1],
+        'accident_period_2003':[0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]})
     return df
-
-
 
 @pytest.fixture
 def test_triangle2():
@@ -94,10 +78,12 @@ def test_triangle2():
     return Triangle.from_dataframe(df=df, id="t")
 
 
-test_parameters = [test_triangle]
+# test_parameters = [test_triangle]
 
 expected_atas = {
     'vw-all': pd.Series([2, 1.5, 1.3, 1]),
+    'vw-5-tail110': pd.Series([2, 1.5, 1.3, 1.1]),
+    'simple-3': pd.Series([2, 1.5, 1.3, 1.1]),
 
     'med-5-ex-hlm-tail105': pd.Series([2, 1.5, 1.3, 1.05]),
 }
@@ -657,10 +643,128 @@ def test_atu_vwa_all(test_triangle):
 
     # make sure the atu with vwa are the same as the expected atu with vwa
     assert np.allclose(expected_atu.values, atu.values, rtol=1e-1, atol=1e-1), f"""TRI-040-A -
-    Triangle._atu_vwa did not return the same atu with vwa as expected:
+    Triangle.atu('vwa', 'all') did not return the same atu with vwa as expected:
     atu: {atu}
     expected_atu: {expected_atu}""" 
 
+def test_atu_vwa_5_tail(test_triangle):
+    t = test_triangle
+
+    # expected atu with vwa
+    ata = expected_atas['vw-5-tail110']
+    expected_atu = ata[::-1].cumprod()[::-1].round(1).reset_index(drop=True)
+    print(f"expected_atu: {expected_atu}")
+
+    # get the atu with vwa from the triangle object
+    atu = t.atu('vwa', 5, tail=1.1).round(1).reset_index(drop=True)
+
+    # make sure the atu with vwa are the same as the expected atu with vwa
+    assert np.allclose(expected_atu.values, atu.values, rtol=1e-1, atol=1e-1), f"""TRI-040-B -
+    Triangle.atu('vwa', 5, tail=1.1) did not return the same atu with vwa as expected:
+    atu: {atu}
+    expected_atu: {expected_atu}""" 
+
+def test_atu_simple3(test_triangle):
+    t = test_triangle
+
+    # expected atu with vwa
+    ata = expected_atas['simple-3']
+    expected_atu = ata[::-1].cumprod()[::-1].round(1).reset_index(drop=True)
+    print(f"expected_atu: {expected_atu}")
+
+    # get the atu with vwa from the triangle object
+    atu = t.atu('simple', 3).round(1).reset_index(drop=True)
+
+    # make sure the atu with vwa are the same as the expected atu with vwa
+    assert np.allclose(expected_atu.values, atu.values, rtol=1e-1, atol=1e-1), f"""TRI-040-C -
+    Triangle.atu('simple', 3) did not return the same atu with vwa as expected:
+    atu: {atu}
+    expected_atu: {expected_atu}"""
+    
+def test_atu_medial_5_exhlm_tail105(test_triangle):
+    t = test_triangle
+
+    # expected atu with vwa
+    ata = expected_atas['med-5-ex-hlm-tail105']
+    expected_atu = ata[::-1].cumprod()[::-1].round(1).reset_index(drop=True)
+    print(f"expected_atu: {expected_atu}")
+
+    # get the atu with vwa from the triangle object
+    atu = t.atu('medial', 5, tail=1.05).round(1).reset_index(drop=True)
+
+    # make sure the atu with vwa are the same as the expected atu with vwa
+    assert np.allclose(expected_atu.values, atu.values, rtol=1e-1, atol=1e-1), f"""TRI-040-D -
+    Triangle.atu('medial', 5, tail=1.05) did not return the same atu with vwa as expected:
+    atu: {atu}
+    expected_atu: {expected_atu}"""
+    
+    
+
+def test_diag(test_triangle):
+    t = test_triangle
+    expected_diag = pd.Series([40, 30, 20, 10]).astype(float).values
+
+    # get the diagonal from the triangle object
+    diag = t.diag().values
+
+    # make sure the diagonal is the same as the expected diagonal
+    assert np.allclose(diag, expected_diag), f"""TRI-041-A -
+    Triangle.diag did not return the same diagonal as expected:
+    diag: {diag}
+    expected_diag: {expected_diag}"""
+
+def test_diag3(test_triangle):
+    t = test_triangle
+    expected_diag = pd.Series([30, 20, 10])
+    print(f"expected_diag: {expected_diag}")
+
+    # get the diagonal from the triangle object
+    diag = t.diag(calendar_year=3)
+    print(f"diag: {diag}")
+
+    # make sure the diagonal is the same as the expected diagonal
+    assert np.allclose(diag.values, expected_diag.values), f"""TRI-041-B -
+    Triangle.diag(3) did not return the same diagonal as expected:
+    diag: {diag}
+    expected_diag: {expected_diag}"""
+
+def test_ult(test_triangle):
+    t = test_triangle
+    expected_ult = pd.Series([40, 40, 40, 40]).astype(float).values
+
+    # get the ultimate from the triangle object (have already tested .diag()) 
+    # and .atu() above)
+    ult = t.ult('vwa', 'all').round(0).astype(float).values
+    
+    # make sure the diagonal is the same as the expected diagonal
+    assert np.allclose(ult, expected_ult), f"""TRI-042 -
+    Triangle.ult('vwa', 'all') did not return the same diagonal as expected:
+    diag: {ult}
+    expected_diag: {expected_ult}"""
+
+def test_melt_triangle(test_triangle):
+    t = test_triangle
+    expected_melted = pd.DataFrame({
+        'accident_period':[2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003],
+        'development_period':[12, 12, 12, 12,
+                              24, 24, 24, 24,
+                              36, 36, 36, 36,
+                              48, 48, 48, 48],
+        'tri':[10, 10, 10, 10,
+                10, 10, 10, 0,
+                10, 10, 0, 0,
+                10, 0, 0, 0]
+    }).astype(float)
+
+    melted = t.melt_triangle().astype(float).fillna(0)
+
+    assert are_dfs_equal(melted, expected_melted), f"""TRI-044 -
+    Triangle.melt_triangle did not return the same melted triangle as expected:
+    melted: {melted}
+    expected_melted: {expected_melted}"""
 
 def test_create_design_matrix_levels(test_triangle, test_dm_ay_levels):
     t = test_triangle
@@ -790,3 +894,5 @@ def test_create_design_matrix_trends4(test_triangle, test_dm_ay_trends):
     df: {df}
     expected_df: {expected_df}"""
     
+# def test_base_design_matrix(test_triangle):
+

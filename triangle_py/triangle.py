@@ -1415,15 +1415,11 @@ class Triangle:
         # if the calendar year is not specified, return the current diagonal
         if calendar_year is None:
             calendar_year = triangle_array.shape[0]
-
-        # diagonal is a series of length equal to the number of rows in the triangle
-        diag = pd.Series(np.diagonal(np.fliplr(triangle_array)), index=self.tri.index)
-
-        # match the index of the diagonal to column name that value can be found in
-        # (remember that the triangle may not be the same size as the index, if the
-        # triangle is not square -- so we need to actually match the first occurrence
-        # of the value to the column name)
-        ################################################################################################################################################################
+            # diagonal is a series of length equal to the number of rows in the triangle
+            diag = pd.Series(np.diagonal(np.fliplr(triangle_array)), index=self.tri.index)
+        # otherwise, return the specified diagonal
+        else:
+            diag = pd.Series(self.df.values[np.where(np.equal(self.cal, calendar_year))])
 
         return diag
 
@@ -2028,12 +2024,10 @@ class Triangle:
             else:
                 raise ValueError("kind must be 'train', 'forecast', or None.")
 
-        cal = self.X_id['calendar_period'][qry]
-        X = self.create_design_matrix_trends(cal,
-                                             s="calendar_period",
-                                             z=3)
+        cal = self.X_id['calendar_period']
+        X = self.create_design_matrix_trends(cal,s="calendar_period",z=3)
         X = X.loc[qry]
-        return cal
+        return X
 
     def get_X_exposure(self, split: str = None) -> pd.DataFrame:
         """
@@ -2048,71 +2042,57 @@ class Triangle:
 
         return df
 
-    def get_X_base(self, split=None, cal=False):
+    def get_X_base(self, kind=None):
         """
         Returns the base design matrix
         """
-        if cal:
-            df_cal = self.get_X_cal(split=None)
-            df = pd.concat([self.X_base, df_cal], axis=1)
-        else:
-            df = self.X_base
-
-        if split == "train":
-            df = df.loc[self.X_base_train.index]
-        elif split == "forecast":
-            df = df.loc[self.X_base_forecast.index]
-        else:
-            df = df
-
-        df["intercept"] = 1
-
+        df = self.get_X(kind=kind)
         return df
 
-    def get_y_base(self, split=None):
+    def get_y_base(self, kind=None):
         """
         Returns the labels for the base design matrix
         """
-        if split is None:
+        if kind is None:
             df = self.y_base
-        elif split == "train":
+        elif kind == "train":
             df = self.y_base_train
-        elif split == "forecast":
+        elif kind == "forecast":
             df = self.y_base_forecast
         else:
             df = self.y_base
 
         return df
 
-    def get_X_id(self, split=None):
+    def get_X_id(self, kind=None):
         """
         Returns the labels for the base design matrix
         """
-        if split is None:
+        if kind is None:
             df = self.X_id
-        elif split == "train":
+        elif kind == "train":
             df = self.X_id_train
-        elif split == "forecast":
+        elif kind == "forecast":
             df = self.X_id_forecast
         else:
             df = self.X_id
 
         return df
 
-    def get_y_id(self, split=None):
-        """
-        Returns the labels for the base design matrix
-        """
-        if split is None:
-            df = self.y_id
-        elif split == "train":
-            df = self.y_id_train
-        elif split == "forecast":
-            df = self.y_id_forecast
-        else:
-            df = self.y_id
+    # def get_y_id(self, kind=None):
+    #     """
+    #     Returns the labels for the base design matrix
+    #     """
+    #     if split is None:
+    #         df = self.y_id
+    #     elif split == "train":
+    #         df = self.y_id_train
+    #     elif split == "forecast":
+    #         df = self.y_id_forecast
+    #     else:
+    #         df = self.y_id
 
-        return df
+    #     return df
 
     # def prep_for_cnn(self, steps=False) -> pd.DataFrame:
     #     """
