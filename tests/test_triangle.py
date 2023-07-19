@@ -1,11 +1,14 @@
-import pandas as pd
-import numpy as np
-import pytest
 import sys
 
-sys.path.append("../triangle")
+import numpy as np
+import pandas as pd
+import pytest
 
-from triangle import Triangle
+sys.path.append("../")
+sys.path.append("../triangle_py")
+
+from triangle_py.triangle import Triangle
+
 
 @pytest.fixture
 def test_triangle():
@@ -21,6 +24,63 @@ def test_triangle():
     return Triangle.from_dataframe(df=df, id="t")
 
 @pytest.fixture
+def test_dm_ay_levels():
+    """
+    build test design matrix
+    """
+    df = pd.DataFrame({
+        'accident_period':[2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003],
+        # 'intercept':[1, 1, 1, 1,
+        #              1, 1, 1, 1,
+        #              1, 1, 1, 1,
+        #              1, 1, 1, 1],
+        'accident_period_2001':[0, 1, 0, 0,
+                                0, 1, 0, 0,
+                                0, 1, 0, 0,
+                                0, 1, 0, 0],
+        'accident_period_2002':[0, 0, 1, 0,
+                                0, 0, 1, 0,
+                                0, 0, 1, 0,
+                                0, 0, 1, 0],
+        'accident_period_2003':[0, 0, 0, 1,
+                                0, 0, 0, 1,
+                                0, 0, 0, 1,
+                                0, 0, 0, 1]
+    })
+    return df
+
+@pytest.fixture
+def test_dm_ay_trends():
+    """
+    build test design matrix
+    """
+    df = pd.DataFrame({
+        'accident_period':[2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003],
+        'accident_period_2001':[0, 1, 1, 1,
+                                0, 1, 1, 1,
+                                0, 1, 1, 1,
+                                0, 1, 1, 1],
+        'accident_period_2002':[0, 0, 1, 1,
+                                0, 0, 1, 1,
+                                0, 0, 1, 1,
+                                0, 0, 1, 1],
+        'accident_period_2003':[0, 0, 0, 1,
+                                0, 0, 0, 1,
+                                0, 0, 0, 1,
+                                0, 0, 0, 1]
+    })
+
+    return df
+
+
+
+@pytest.fixture
 def test_triangle2():
     """
     build test triangle 2
@@ -32,6 +92,7 @@ def test_triangle2():
         '48':[40, np.nan, np.nan, np.nan]
     }, index=[1990, 1991, 1992, 1993])
     return Triangle.from_dataframe(df=df, id="t")
+
 
 test_parameters = [test_triangle]
 
@@ -50,23 +111,15 @@ def are_triangles_equal(tri_df1:pd.DataFrame, tri_df2:pd.DataFrame) -> bool:
                        rtol=1e-3,
                        atol=1e-3)
 
-def cumprod(s:pd.Series) -> pd.Series:
-    
+def are_dfs_equal(df1:pd.DataFrame, df2:pd.DataFrame) -> bool:
+    """
+    Check if the values in two triangles are equal, ignoring NaNs
+    """
+    return np.allclose(df1.values,
+                       df2.values,
+                       rtol=1e-3,
+                       atol=1e-3)
 
-  idx = s.index.tolist()
-  idx.reverse()
-
-  ata = s
-  ata.index = idx
-  ata = np.log(ata)
-  ata.sort_index(inplace=True)
-  ata = ata.cumsum()
-
-
-  ata.index = idx
-  ata = ata.sort_index()
-  ata = np.exp(ata)
-  return(ata)
 
 def test_triangle_init(test_triangle: Triangle):
     """
@@ -160,7 +213,7 @@ Triangle.from_clipboard did not read in the same triangle as Triangle.from_dataf
 
 def test_from_csv():
     # read in triangle from csv
-    filename = "../triangle/data/mack1994.csv"
+    filename = "../triangle_py/data/mack1994.csv"
     t = Triangle.from_csv(filename, id="mack")
     t.tri = t.tri.astype(float).reset_index(drop=True)
 
@@ -175,11 +228,12 @@ def test_from_csv():
 
 def test_from_excel():
     # read in triangle from excel
-    filename = "../triangle/data/dahms reserve triangles.xlsx"
+    filename = "../triangle_py/data/dahms reserve triangles.xlsx"
     t = Triangle.from_excel(filename,
                             sheet_name="rpt",
                             origin_columns=1,
                             id="rpt",
+                            use_cal=False,
                             sheet_range="a1:k11")
     t.tri = t.tri.astype(float)
     print(f"t.tri: {t.tri}")
@@ -187,7 +241,7 @@ def test_from_excel():
     # read in triangle from excel using pandas
     t2 = (pd.read_excel(filename, sheet_name="rpt")
           .iloc[:10, :11]
-          .set_index('ay')
+          .set_index('accident_period')
           .astype(float))
     print(f"t2: {t2}")
 
@@ -202,7 +256,7 @@ def test_from_mack_1994():
     t = Triangle.from_mack_1994()
 
     # read in triangle from csv (already tested .from_csv above)
-    t2 = Triangle.from_csv("../triangle/data/mack1994.csv", id="paid_loss")
+    t2 = Triangle.from_csv("../triangle_py/data/mack1994.csv", id="paid_loss")
 
     # make sure the two triangles are equal
     assert are_triangles_equal(t.tri, t2.tri), f"""TRI-021 -
@@ -215,7 +269,7 @@ def test_from_taylor_ashe():
     t = Triangle.from_taylor_ashe()
 
     # read in triangle from csv (already tested .from_csv above)
-    t2 = Triangle.from_csv("../triangle/data/taylorashe.csv", id="paid_loss")
+    t2 = Triangle.from_csv("../triangle_py/data/taylorashe.csv", id="paid_loss")
 
     # make sure the two triangles are equal
     assert are_triangles_equal(t.tri, t2.tri), f"""TRI-022 -
@@ -228,10 +282,11 @@ def test_from_dahms_rpt():
     t, _ = Triangle.from_dahms()
 
     # read in triangle from excel (already tested .from_excel above)
-    t2 = Triangle.from_excel("../triangle/data/dahms reserve triangles.xlsx",
+    t2 = Triangle.from_excel("../triangle_py/data/dahms reserve triangles.xlsx",
                              sheet_name="rpt",
                              origin_columns=1,
                              id="rpt",
+                             use_cal=False,
                              sheet_range="a1:k11")
 
     # make sure the two triangles are equal
@@ -245,10 +300,11 @@ def test_from_dahms_paid():
     _, t = Triangle.from_dahms()
 
     # read in triangle from excel (already tested .from_excel above)
-    t2 = Triangle.from_excel("../triangle/data/dahms reserve triangles.xlsx",
+    t2 = Triangle.from_excel("../triangle_py/data/dahms reserve triangles.xlsx",
                              sheet_name="paid",
                              origin_columns=1,
                              id="paid",
+                             use_cal=False,
                              sheet_range="a1:k11")
 
     # make sure the two triangles are equal
@@ -604,3 +660,91 @@ def test_atu_vwa_all(test_triangle):
     Triangle._atu_vwa did not return the same atu with vwa as expected:
     atu: {atu}
     expected_atu: {expected_atu}""" 
+
+
+def test_create_design_matrix_levels(test_triangle, test_dm_ay_levels):
+    t = test_triangle
+    expected_df = test_dm_ay_levels
+    print(f"expected_df: {expected_df}")
+    print(f"expected_df.shape: {expected_df.shape}")
+
+    # get the design matrix from the triangle object
+    df = t.create_design_matrix_levels(t.X_id['accident_period'], z=4, s="accident_period")
+    print(f"df: {df}")
+    print(f"df.shape: {df.shape}")
+
+    # make sure the design matrix is the same as the expected design matrix
+    assert are_triangles_equal(df,expected_df), f"""TRI-041 -
+    Triangle.create_design_matrix_levels did not return the same design matrix as expected:
+    df: {df}
+    expected_df: {expected_df}"""
+
+def test_create_design_matrix_trends1(test_triangle, test_dm_ay_trends):
+    t = test_triangle
+    expected_df = test_dm_ay_trends
+    print(f"expected_df: {expected_df}")
+    print(f"expected_df.shape: {expected_df.shape}")
+
+    # get the design matrix from the triangle object
+    df = t.create_design_matrix_trends(t.X_id['accident_period'], z=4, s="accident_period")
+    print(f"df: {df}")
+    print(f"df.shape: {df.shape}")
+
+    # make sure the design matrix is the same as the expected design matrix
+    assert are_dfs_equal(df,expected_df), f"""TRI-043-A -
+    Triangle.create_design_matrix_trends did not return the same design matrix as expected:
+    df: {df}
+    expected_df: {expected_df}"""
+    
+
+def test_create_design_matrix_trends2(test_triangle, test_dm_ay_trends):
+    t = test_triangle
+    expected_df = test_dm_ay_trends[['accident_period_2001']]
+    print(f"expected_df: {expected_df}")
+    print(f"expected_df.shape: {expected_df.shape}")
+
+    # get the design matrix from the triangle object
+    df = t.create_design_matrix_trends(t.X_id['accident_period'], z=4, s="accident_period")[['accident_period_2001']]
+    print(f"df: {df}")
+    print(f"df.shape: {df.shape}")
+
+    # make sure the design matrix is the same as the expected design matrix
+    assert are_dfs_equal(df,expected_df), f"""TRI-043-B -
+    Triangle.create_design_matrix_trends did not return the same design matrix as expected:
+    df: {df}
+    expected_df: {expected_df}"""
+    
+def test_create_design_matrix_trends3(test_triangle, test_dm_ay_trends):
+    t = test_triangle
+    expected_df = test_dm_ay_trends[['accident_period_2002']]
+    print(f"expected_df: {expected_df}")
+    print(f"expected_df.shape: {expected_df.shape}")
+
+    # get the design matrix from the triangle object
+    df = t.create_design_matrix_trends(t.X_id['accident_period'], z=4, s="accident_period")[['accident_period_2002']]
+    print(f"df: {df}")
+    print(f"df.shape: {df.shape}")
+
+    # make sure the design matrix is the same as the expected design matrix
+    assert are_dfs_equal(df,expected_df), f"""TRI-043-C -
+    Triangle.create_design_matrix_trends did not return the same design matrix as expected:
+    df: {df}
+    expected_df: {expected_df}"""
+    
+def test_create_design_matrix_trends4(test_triangle, test_dm_ay_trends):
+    t = test_triangle
+    expected_df = test_dm_ay_trends[['accident_period_2003']]
+    print(f"expected_df: {expected_df}")
+    print(f"expected_df.shape: {expected_df.shape}")
+
+    # get the design matrix from the triangle object
+    df = t.create_design_matrix_trends(t.X_id['accident_period'], z=4, s="accident_period")[['accident_period_2003']]
+    print(f"df: {df}")
+    print(f"df.shape: {df.shape}")
+
+    # make sure the design matrix is the same as the expected design matrix
+    assert are_dfs_equal(df,expected_df), f"""TRI-043-D -
+    Triangle.create_design_matrix_trends did not return the same design matrix as expected:
+    df: {df}
+    expected_df: {expected_df}"""
+    

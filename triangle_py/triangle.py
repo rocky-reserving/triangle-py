@@ -8,6 +8,7 @@ using the chain ladder method.
 
 import json
 import os
+
 # import torch
 # from torch.utils.data import DataLoader
 from dataclasses import dataclass
@@ -51,8 +52,8 @@ class Triangle:
         triangle data.
     cal : pd.DataFrame, default=None
         The calendar period labels. Default is None, in which case the
-        calendar period
-        labels will be calculated from the acc and dev attributes.
+        calendar period labels will be calculated from the acc and dev
+        attributes.
     n_acc : int, default=None
         The number of accident periods in the triangle data. Default is
         None, in which case the number of accident periods will be calculated
@@ -65,6 +66,17 @@ class Triangle:
         The number of calendar periods in the triangle data. Default is None,
         in which case the number of calendar periods will be calculated from
         the number of unique calendar periods in the `cal` attribute.
+    acc_trends : bool, default=False
+        Whether or not to model the accident period effects as trends. If
+        True, linear trends will be used to model the accident periods. 
+        Default is False, in which case the accident period effects will be
+        modeled as levels unrelated to the previous accident period.
+    dev_trends : bool, default=True
+        Whether or not to model the development period effects as trends. See
+        `acc_trends` for more information.
+    cal_trends : bool, default=True
+        Whether or not to model the calendar period effects as trends. See
+        `acc_trends` for more information.
     n_vals : int, default=3
         The number of diagonals used for time-series validation. Default is 3,
         which corresponds to the 3 most recent diagonals. If `n_vals` is set
@@ -100,6 +112,10 @@ class Triangle:
     n_acc: int = None
     n_dev: int = None
     n_cal: int = None
+    acc_trends: bool = False
+    dev_trends: bool = True
+    cal_trends: bool = True
+    use_cal: bool = True
     n_vals: int = 3
     incr_triangle: pd.DataFrame = None
     X_base: pd.DataFrame = None
@@ -167,8 +183,7 @@ class Triangle:
             # set the n_cal attribute
             self.n_cal = self.cal.max().max() - self.cal.min().min() + 1
 
-        # convert triangle data to float
-        if self.tri is not None:
+            # convert triangle data to float
             for c in self.tri.columns:
                 try:
                     self.tri[c] = self.tri[c].astype(float)
@@ -188,7 +203,7 @@ class Triangle:
         # create alias for self.tri as self.df that matches the triangle as
         # it is updated, and does not need to be updated separately
         self.df = self.tri
-        self.base_linear_model()
+        self.base_design_matrix()
         self.positive_y = self.y_base.loc[self.y_base > 0].index.values
         self.is_observed = self.X_base.is_observed
         self.tri0 = self.tri.round(0)
@@ -625,7 +640,8 @@ class Triangle:
     @classmethod
     def from_dataframe(cls,
                        df: pd.DataFrame,
-                       id: Optional[str] = None) -> "Triangle":
+                       id: Optional[str] = None,
+                       use_cal:bool = True) -> "Triangle":
         """
         Create a Triangle object from a pandas DataFrame.
 
@@ -640,18 +656,24 @@ class Triangle:
                 3. The values set as the values in the DataFrame.
             If any of these conditions are not met, the triangle data will
             be set to None.
+        use_cal : bool
+            Whether or not to use calendar period effects in the linear
+            model representation. Default is True.
+
         Returns:
         --------
         Triangle
             A Triangle object with data loaded from the DataFrame.
         """
         # Create and return a Triangle object
-        return cls(id=id, tri=df, triangle=df)
+        return cls(id=id, tri=df, triangle=df, use_cal=use_cal)
 
     @classmethod
-    def from_clipboard(
-        cls, origin_columns: int = 1, headers: list = None, id: Optional[str] = None
-    ) -> "Triangle":
+    def from_clipboard(cls,
+                       origin_columns: int = 1,
+                       headers: list = None,
+                       id: Optional[str] = None,
+                       use_cal:bool = True) -> "Triangle":
         """
         Create a Triangle object from data copied to the clipboard.
 
@@ -665,6 +687,9 @@ class Triangle:
         headers : list
             List of column names to use. Default is None, in which case the
             first row will be repurposed as the headers.
+        use_cal : bool
+            Whether or not to use calendar period effects in the linear
+            model representation. Default is True.
 
         Returns:
         --------
@@ -708,9 +733,11 @@ class Triangle:
         return cls(id=id, tri=df, triangle=df)
 
     @classmethod
-    def from_csv(
-        cls, filename: str, origin_columns: int = 1, id: Optional[str] = None
-    ) -> "Triangle":
+    def from_csv(cls,
+                 filename: str,
+                 origin_columns: int = 1,
+                 id: Optional[str] = None,
+                 use_cal:bool = True) -> "Triangle":
         """
         Create a Triangle object from data in a CSV file.
         Parameters:
@@ -721,28 +748,31 @@ class Triangle:
             The id of the triangle.
         origin_columns : int
             The number of columns used for the origin period. Default is 1.
+        use_cal : bool
+            Whether or not to use calendar period effects in the linear
+            model representation. Default is True.
+
         Returns:
         --------
         Triangle
             A Triangle object with data loaded from the CSV file.
         """
         # Read data from the CSV file
-        df = pd.read_csv(
-            filename, header=0, index_col=[i for i in range(origin_columns)]
-        )
+        df = pd.read_csv(filename,
+                         header=0,
+                         index_col=[i for i in range(origin_columns)])
 
         # Create and return a Triangle object
-        return cls(id=id, tri=df, triangle=df)
+        return cls(id=id, tri=df, triangle=df, use_cal=use_cal)
 
     @classmethod
-    def from_excel(
-        cls,
-        filename: str,
-        origin_columns: int,
-        id: Optional[str] = None,
-        sheet_name: Optional[str] = None,
-        sheet_range: Optional[str] = None,
-    ) -> "Triangle":
+    def from_excel(cls,
+                   filename: str,
+                   origin_columns: int,
+                   id: Optional[str] = None,
+                   use_cal: bool = True,
+                   sheet_name: Optional[str] = None,
+                   sheet_range: Optional[str] = None) -> "Triangle":
         """
         Create a Triangle object from data in an Excel file.
         Parameters:
@@ -759,6 +789,10 @@ class Triangle:
         sheet_range : str, optional
             A string containing the range of cells to read from the Excel
             file. The range should be in the format "A1:B2".
+        use_cal : bool
+            Whether or not to use calendar period effects in the linear
+            model representation. Default is True.
+
         Returns:
         --------
         Triangle
@@ -795,11 +829,15 @@ class Triangle:
         # re-sort the columns
         df.sort_index(axis=1, inplace=True)
 
+        # cast the columns to floats then integers
+        df.columns = df.columns.astype(float).astype(int)
+
         # Create and return a Triangle object
-        return cls(id=id, tri=df.round(1), triangle=df.round(1))
+        return cls(id=id, tri=df.round(1), triangle=df.round(1), use_cal=use_cal)
 
     @classmethod
-    def from_mack_1994(cls) -> "Triangle":
+    def from_mack_1994(cls,
+                       use_cal:bool = False) -> "Triangle":
         """
         Create a Triangle object from the sample triangle in the Mack 1994
         paper, "Measuring the Variability of Chain Ladder Reserve Estimates"
@@ -808,7 +846,9 @@ class Triangle:
 
         Parameters:
         -----------
-        None
+        use_cal : bool
+            Whether or not to use calendar period effects in the linear
+            model representation. Default is False.        
 
         Returns:
         --------
@@ -826,15 +866,20 @@ class Triangle:
         df = pd.read_csv(data_file, header=0, index_col=0)
 
         # Create and return a Triangle object
-        return cls(id="gl_rpt_loss", tri=df, triangle=df)
+        return cls(id="gl_rpt_loss", tri=df, triangle=df, use_cal=use_cal)
 
     @classmethod
-    def from_taylor_ashe(cls) -> "Triangle":
+    def from_taylor_ashe(cls,
+                         use_cal: bool = False) -> "Triangle":
         """
         Create a Triangle object from the Taylor Ashe sample data.
+        
         Parameters:
         -----------
-        None
+        use_cal : bool
+            Whether or not to use calendar period effects in the linear
+            model representation. Default is False.
+        
         Returns:
         --------
         Triangle
@@ -850,10 +895,11 @@ class Triangle:
         df = pd.read_csv(data_file, header=0, index_col=0)
 
         # Create and return a Triangle object
-        return cls(id="paid_loss", tri=df, triangle=df)
+        return cls(id="paid_loss", tri=df, triangle=df, use_cal=use_cal)
 
     @classmethod
-    def from_dahms(cls) -> tuple:
+    def from_dahms(cls,
+                   use_cal:bool = False) -> tuple:
         """
         Create a Triangle object from the Dahms sample data. This sample data
         contains both a reported and a paid triangle, so this method returns
@@ -863,7 +909,9 @@ class Triangle:
 
         Parameters:
         -----------
-        None
+        use_cal : bool
+            Whether or not to use calendar period effects in the linear
+            model representation. Default is False.
 
         Returns:
         --------
@@ -887,6 +935,7 @@ class Triangle:
             id="paid_loss",
             origin_columns=1,
             sheet_range="a1:k11",
+            use_cal=use_cal,
         )
         rpt = cls.from_excel(
             data_file,
@@ -894,6 +943,7 @@ class Triangle:
             id="rpt_loss",
             origin_columns=1,
             sheet_range="a1:k11",
+            use_cal=use_cal,
         )
 
         # Create and return a Triangle object
@@ -973,7 +1023,7 @@ class Triangle:
         """
         # get the cumulative triangle data
         if cum_tri is None:
-            cum_tri = self.triangle
+            cum_tri = self.tri
 
         # get the cumulative triangle data
         inc_tri = cum_tri - cum_tri.shift(1, axis=1, fill_value=0)
@@ -1518,7 +1568,7 @@ class Triangle:
         self,
         id_cols: list = None,
         var_name: str = "development_period",
-        value_name: str = "triangle",
+        value_name: str = "tri",
         _return: bool = True,
         incr_tri: bool = True,
     ) -> pd.DataFrame:
@@ -1530,7 +1580,7 @@ class Triangle:
             The columns to use as the id variables. Default is None, in which
             case the index is used.
         var_name: str
-            The name of the variable column. Default is 'dev'.
+            The name of the variable column. Default is 'development_period'.
         value_name: str
             The name of the value column. Default is None, in which case
             the value column is set equal to the triangle ID.
@@ -1548,7 +1598,7 @@ class Triangle:
         """
         # if id_cols is None, use the index
         if id_cols is None:
-            id_cols = self.triangle.index.name
+            id_cols = self.tri.index.name
 
         # if value_name is None, use the triangle ID
         if value_name is None:
@@ -1565,23 +1615,188 @@ class Triangle:
         tri.index = self.get_formatted_dataframe().index
 
         # melt the triangle data
-        melted = tri.reset_index().melt(
-            id_vars=id_cols, var_name=var_name, value_name=value_name
-        )
+        melted = tri.reset_index().melt(id_vars=id_cols,
+                                        var_name=var_name,
+                                        value_name=value_name)
 
         # if _return is True, return the melted triangle data
         if _return:
             return melted
+
+    def create_design_matrix_levels(self,
+                                    column: pd.Series = None,
+                                    z: int = 4,
+                                    s: str = None) -> pd.DataFrame:
+        """
+        Creates a design matrix from a given column. The column is treated as
+        categorical, zero-padded to the length specified by `z`, and one-hot-
+        encoded using pandas.get_dummies. The column names of the resulting
+        design matrix are in the format `s_{zero-padded z}`.
+
+        Parameters:
+        -----------
+        column: pd.Series, Optional
+            The column to be transformed into a design matrix. This should
+            be a pandas.Series object. Default is None, in which case the
+            column is set equal to the accident period column from the 
+            melted triangle data.
+        z: int, Optional
+            The length to which category labels should be zero-padded.
+            Default is 4.
+        s: str, Optional
+            The string to be used as a prefix in the column names of the
+            design matrix. Default is None, in which case the string is
+            the `name` attribute of the input column.
+
+        Returns:
+        --------
+        result: pd.DataFrame
+            The design matrix as a pandas DataFrame. It consists of the 
+            original column followed by the one- hot-encoded categories from
+            the input column, with column names in the format
+            `s_{zero-padded z}`.
+
+        Examples:
+        ---------
+        >>> df = pd.DataFrame({'accident_period': [1, 2, 3, 4, 5]})
+        >>> create_design_matrix_levels(df['accident_period'],
+                                        z=2,
+                                        s='acc')
+        >>>   accident_period  acc_01  acc_02  acc_03  acc_04  acc_05
+        >>> 0               1       1       0       0       0       0
+        >>> 1               2       0       1       0       0       0
+        >>> 2               3       0       0       1       0       0
+        >>> 3               4       0       0       0       1       0
+        >>> 4               5       0       0       0       0       1
+
+        Raises:
+        -------
+        TypeError:
+            1. If the input column is not a pandas.Series object.
+            2. If the zero-padding length is not an integer.
+            3. If the prefix string is not a string, or cannot be coerced
+            to a string.
+
+        ValueError:
+            1. If the zero-padding length is not an integer greater
+                than 0.
+        """
+        # if column is None, use the accident period column from the melted
+        # triangle data
+        if column is None:
+            column = self.melt_triangle()['accident_period']
+
+        if isinstance(column, str):
+            col_name = column
+            column = self.melt_triangle()[column]
+            s = col_name if s is None else s
+
+        # if column is not a pandas.Series object, raise an error
+        if not isinstance(column, pd.Series):
+            raise TypeError('Input column must be a pandas.Series object.')
+
+        # if z is not an integer, raise an error
+        if not isinstance(z, int):
+            raise TypeError('Zero-padding length must be an integer.')
+
+        # if z is not greater than 0, raise an error
+        if z <= 0:
+            raise ValueError('Zero-padding length must be greater than 0.')
+
+        # Ensure column is treated as a string
+        column = column.astype(str)
+
+        # Zero-pad the category labels
+        column_copy = column.copy().apply(lambda x: str(x).zfill(z))
+
+        # One-hot-encode the column with pandas.get_dummies
+        encoded = pd.get_dummies(column_copy, drop_first=True).astype(int)
+
+        # Rename the columns
+        encoded.columns = [f"{s}_{label}" for label in encoded.columns]
+
+        # Include the original column as the first column
+        result = pd.concat([column.astype(int), encoded], axis=1)
+
+        return result
+
+    def create_design_matrix_trends(self,
+                                    column: pd.Series = None,
+                                    z: int = 4,
+                                    s: str = None) -> pd.DataFrame:
+        """
+        Creates a design matrix from a given column. The column is treated as
+        categorical, zero-padded to the length specified by `z`, and encoded
+        such that all categories less than or equal to the given category get
+        a 1, while the rest get a 0. The column names of the resulting
+        design matrix are in the format `s_{zero-padded z}`.
+
+        Parameters:
+        -----------
+        column: pd.Series, Optional
+            The column to be transformed into a design matrix. This should
+            be a pandas.Series object. Default is None, in which case the
+            column is set equal to the accident period column from the 
+            melted triangle data.
+        z: int, Optional
+            The length to which category labels should be zero-padded.
+            Default is 4.
+        s: str, Optional
+            The string to be used as a prefix in the column names of the
+            design matrix. Default is None, in which case the string is
+            the `name` attribute of the input column.
+
+        Returns:
+        --------
+        result: pd.DataFrame
+            The design matrix as a pandas DataFrame. It consists of encoded
+            categories from the input column, with column names in the format
+            `s_{zero-padded z}` and the original column as the first column.
+
+        Raises:
+        -------
+        TypeError:
+            1. If the input column is not a pandas.Series object.
+            2. If the zero-padding length is not an integer.
+            3. If the prefix string is not a string, or cannot be coerced
+            to a string.
+        ValueError:
+            1. If the zero-padding length is not an integer greater
+                than 0.
+        """
+        # start with the levels design matrix from before
+        start = self.create_design_matrix_levels(column=column,
+                                                 z=z,
+                                                 s=s)
+
+        trends = start.copy()
+        # for each column in the design matrix,
+        for i, c in enumerate(start.columns.tolist()):
+            # if it's the very last column, set it equal to itself
+            if i == (start.shape[1] - 1):
+                trends[c] = start[c].values
+
+            # do not adjust the very first column
+            elif i == 0:
+                trends[c] = start[c].values
+
+            # otherwise, if any column to the right of the current column
+            # is equal to 1, set the current column equal to 1
+            else:
+                trends[c] = np.where(start.iloc[:, i + 1:].sum(axis=1) > 0,
+                                     1,
+                                     0)
+
+        return trends
+        
 
     def base_design_matrix(
         self,
         id_cols: list = None,
         var_name: str = "development_period",
         value_name: str = "tri",
-        trends: bool = True,
-        _return: bool = True,
         incr_tri: bool = True,
-    ) -> pd.DataFrame:
+        return_: bool = False) -> pd.DataFrame:
         """
         Creates a design matrix from the triangle data. The design matrix is a pandas
         dataframe with one row for each triangle cell, and one column for each origin
@@ -1601,6 +1816,10 @@ class Triangle:
         id_cols: list
             The columns to use as the id variables. Default is None, in which
             case the index is used.
+        cols: list | str
+            The columns to use in the design matrix. Accepts either a list
+            of column names, or a string to use as a regex to match column
+            names. Default is None, in which case all columns are used.
         var_name: str
             The name of the variable column. Default is 'dev'.
         value_name: str
@@ -1614,6 +1833,9 @@ class Triangle:
         incr_tri: bool
             If True, use the incremental triangle data. Default is True. If
             False, use the cumulative triangle data.
+        return_: bool
+            If True, return the design matrix as a pandas dataframe.
+            Default is False.
 
         Returns:
         --------
@@ -1621,240 +1843,207 @@ class Triangle:
             The design matrix.
         """
         if id_cols is None:
-            id_cols = self.triangle.index.name
+            id_cols = 'accident_period'
 
         if value_name is None:
-            value_name = self.id
+            value_name = 'development_period'
 
         # melt the triangle data
-        melted = self.melt_triangle(
-            id_cols=id_cols,
-            var_name=var_name,
-            value_name=value_name,
-            _return=True,
-            incr_tri=incr_tri,
-        )
+        melted = self.melt_triangle(id_cols=id_cols,
+                                    var_name=var_name,
+                                    value_name=value_name,
+                                    _return=True,
+                                    incr_tri=incr_tri)
+        
+        # add calendar period:
+        melted['calendar_period'] = (
+            melted
+            .apply(lambda x: int(x[0]) - 
+                             melted['accident_period'].astype(int).min() + 
+                             int(x[1]), axis=1))
+        melted['is_observed'] = melted[value_name].notnull().astype(int)
 
-        df = self.get_formatted_dataframe()
+        # create the design matrices for each column
+        # accident period
+        if self.acc_trends:
+            acc = self.create_design_matrix_trends(melted['accident_period'],
+                                                   s='accident_period',
+                                                   z=4)
+        else:
+            acc = self.create_design_matrix_levels(melted['accident_period'],
+                                                   s='accident_period',
+                                                   z=4)
+        
+        # development period
+        if self.dev_trends:
+            dev = self.create_design_matrix_trends(melted['development_period'],
+                                                   s='development_period',
+                                                   z=3)
+        else:
+            dev = self.create_design_matrix_levels(melted['development_period'],
+                                                   s='development_period',
+                                                   z=3)
 
-        _acc = df.index.name if df.index.name is not None else "accident_period"
-        _dev = df.columns.name if df.columns.name is not None else "development_period"
+        # calendar period
+        if self.cal_trends:
+            cal = self.create_design_matrix_trends(melted['calendar_period'],
+                                                   s='calendar_period',
+                                                   z=3)
+        else:
+            cal = self.create_design_matrix_levels(melted['calendar_period'],
+                                                   s='calendar_period',
+                                                   z=3)
 
-        acc = _acc.lower().replace(" ", "_").replace(".", "")
-        dev = _dev.lower().replace(" ", "_").replace(".", "")
+        # combine the design matrices
+        dm_total = pd.concat(
+            [melted[[value_name, 'is_observed']], acc, dev, cal],
+            axis=1)
 
-        melted.rename(columns={f"{_acc}": acc, f"{_dev}": dev}, inplace=True)
-        # melted[acc]
-
-        # convert the origin and development periods to zero-padded categorical variables
-        melted[acc] = melted[acc].astype(str).str.zfill(4).astype("category")
-        melted[dev] = melted[dev].astype(str).str.zfill(4).astype("category")
-
-        # create the design matrix
-        dm_total = pd.get_dummies(melted, columns=[acc, dev], drop_first=True)
-
-        # if trends is True, add linear trends to the design matrix
-        if trends:
-            # create dummy variables for the origin and development periods
-            dm_ay = pd.get_dummies(melted[[acc]], drop_first=True)
-            dm_dev = pd.get_dummies(melted[[dev]], drop_first=True)
-
-            # ay dm columns
-            cols = dm_ay.columns.tolist()
-
-            # reverse the order of the columns (to loop backwards)
-            cols.reverse()
-
-            # loop backwards through the columns
-            for i, c in enumerate(cols):
-                # if i==0, set the column equal to itself
-                if i == 0:
-                    dm_total[c] = dm_ay[c]
-
-                # otherwise, add the column to the previous column
-                else:
-                    dm_total[c] = dm_ay[c] + dm_total[cols[i - 1]]
-
-            # do the same thing for the development period dummy variables
-            cols = dm_dev.columns.tolist()
-            cols.reverse()
-            for i, c in enumerate(cols):
-                if i == 0:
-                    dm_total[c] = dm_dev[c]
-                else:
-                    dm_total[c] = dm_dev[c] + dm_total[cols[i - 1]]
-
-            # add a column called "is_observed" at the beginning that is 1 if
-            # dm_total[value_name] is not null and 0 otherwise
-            observed_col = dm_total[value_name].notnull().astype(int)
-            dm_total.insert(0, "is_observed", observed_col)
-
-        for c in dm_total.columns:
-            if dm_total[c] is bool:
-                dm_total[c] = dm_total[c].astype(int)
-
-        # if _return is True, return the design matrix
-        if _return:
+        if return_:
             return dm_total
 
-        self.X_base = dm_total.drop(columns=value_name).astype(int)
+        # sort the columns
+        front_cols = [value_name,
+                      'is_observed',
+                      'accident_period',
+                      'development_period',
+                      'calendar_period']
+        dm_total = dm_total[front_cols + list(dm_total.columns.drop(front_cols))]
+
+        # drop calendar period variables if self.use_cal is False
+        if self.use_cal:
+            pass
+        else:
+            cal_columns = dm_total.columns[dm_total.columns.str.contains('cal')]
+            calendar_period = dm_total['calendar_period']
+            dm_total = dm_total.drop(columns=cal_columns.tolist())
+            front_cols = [c for c in front_cols if 'cal' not in c and c != 'calendar_period']
+        
+        # assign class attributes with the design matrix and target variable
+        self.X_base = dm_total.drop(columns=front_cols).astype(int)
+        self.X_base['is_observed'] = dm_total['is_observed'].astype(int)
+        self.X_base['intercept'] = 1
+        self.X_base = self.X_base[['is_observed', 'intercept'] + self.X_base.columns.drop('is_observed').tolist()]
         self.y_base = dm_total[value_name]
+        self.y_base.name = "y"
 
         # ay/dev id for each row
-        self.X_id = pd.DataFrame(
-            dict(
-                accident_period=melted[acc].astype(int).values,
-                development_period=melted[dev].astype(float).astype(int).values,
-            )
-        )
-        self.X_id["calendar_period"] = (
-            self.X_id.accident_period - self.X_id.accident_period.min()
-        ) + (self.X_id.development_period / self.X_id.development_period.min())
-        self.X_id["calendar_period"] = self.X_id["calendar_period"].astype(int)
+        if self.use_cal:
+            self.X_id = dm_total[front_cols]
+        else:
+            self.X_id = pd.concat([dm_total[front_cols],
+                                   calendar_period], axis=1)
         self.X_id.index = self.X_base.index
 
-    def base_linear_model(
-        self,
-        id_cols: list = None,
-        var_name: str = "development_period",
-        value_name: str = None,
-        trends: bool = True,
-        incr_tri: bool = True,
-        intercept_: bool = True,
-    ) -> pd.DataFrame:
+        # create the train/forecast data split based on the is_observed
+        # column
+        self.get_train_forecast_split(return_=False)
+
+        return dm_total
+
+    def get_train_forecast_split(self,
+                                 custom_split:list|
+                                              np.ndarray|
+                                              pd.Series|
+                                              None = None,
+                                 return_:bool = True
+        ) -> pd.Series:
         """
-        Builds the train/forecast data split based off of the base design matrix.
+        Splits self.X_base and self.y_base into train and forecast datasets.
+        This function is used as a helper function for the base_design_matrix
+        method, and is not intended to be called directly.
 
         Parameters:
         -----------
-        (See base_design_matrix() for parameter descriptions of id_cols, var_name,
-        value_name, trends, _return, and incr_tri)
-
-        intercept_: bool
-            If True, include an intercept in the model. Default is True.
+        custom_split: list | np.ndarray | pd.Series | None
+            A custom split to use for the train/forecast split. If None,
+            use the default train/forecast split. Default is None.
+        return_: bool
+            If True, return the train/forecast split as a pandas series.
 
         Returns:
         --------
-        dm_base_train: pd.DataFrame
-            The training data design matrix with target variable as the first column.
+        train_forecast: pd.Series
+            A series of 1s and 0s, where 1 indicates a row in the train
+            dataset, and 0 indicates a row in the forecast dataset.
+
+        Also sets self.X_base_train, self.X_base_forecast, self.y_base_train,
+        self.X_id_train, and self.X_id_forecast.
         """
-        # if the base design matrix has not been created, create it
-        if self.X_base is None:
-            self.base_design_matrix(
-                id_cols=id_cols,
-                var_name=var_name,
-                value_name=value_name,
-                trends=trends,
-                _return=False,
-                incr_tri=incr_tri,
-            )
+        # if custom_split is None, use set custom split to the is_observed
+        # column of the base design matrix
+        if custom_split is None:
+            custom_split = self.X_base.is_observed
 
-        # create the train/forecast data split based on whether or not the
-        # target variable is null
-        self.X_base_train = self.X_base[self.X_base.is_observed.eq(1)]
-        self.y_base_train = self.y_base[self.X_base.is_observed.eq(1)]
-        self.X_base_forecast = self.X_base[self.X_base.is_observed.eq(0)].assign(
-            intercept=1
-        )
+        # now use the custom train/forecast split to create the
+        # train/forecast design matrices
+        self.X_base_train = self.X_base.loc[custom_split.eq(1)]
+        self.X_base_forecast = self.X_base.loc[custom_split.eq(0)]
+        self.y_base_train = self.y_base[custom_split.eq(1)]
+        self.X_id_train = self.X_id.loc[custom_split.eq(1)]
+        self.X_id_forecast = self.X_id.loc[custom_split.eq(0)]
 
-        self.X_id_train = self.X_id[self.X_base.is_observed.eq(1)]
-        self.X_id_forecast = self.X_id[self.X_base.is_observed.eq(0)]
-
-        # if intercept_ is False, drop the intercept column
-        if not intercept_:
-            self.X_base_train = self.X_base_train.drop(columns="intercept")
-            self.X_base_forecast = self.X_base_forecast.drop(columns="intercept")
+        # return the custom train/forecast split
+        if return_:
+            return custom_split
 
     def get_X(
         self,
-        split: str = None,
-        use_cal: bool = False,
-        X_type: str = None,
-        column_query: str = None,
+        kind: str = None,
     ) -> pd.DataFrame:
         """
-        Get the design matrix for the given split.
+        Get the design matrix for the given kind.
 
         Parameters:
         -----------
-        split: str
-            The split to get the design matrix for. If None, return the full design
+        kind: str
+            The kind to get the design matrix for. If None, return the full design
             matrix. If "train", return the training design matrix. If "forecast",
             return the forecast design matrix. Default is None.
-        use_cal: bool
-            If True, include the calendar period in the design matrix. Default is
-            False.
-        X_type: str
-            The type of design matrix to return. If None, return the full design
-            matrix. If "base", return the base design matrix. If "cal", return the
-            calendar design matrix. If "id", return the id design matrix. Default is
-            None.
-        column_query: str
-            If not None, only return columns that contain the given string. Default
-            is None.
 
         Returns:
         --------
         X: pd.DataFrame
-            The design matrix for the given split.
+            The design matrix for the given kind.
         """
-        cal = self.get_X_cal(split=split)
-        base = self.get_X_base(split=split)
-        id = self.get_X_id(split=split)
-
-        if use_cal:
-            X = pd.concat([id, base, cal], axis=1)
+        if kind is None:
+            X = self.X_base.copy()
+        elif kind.lower()=="train":
+            X = self.X_base_train.copy()
+            X.drop('is_observed', axis=1, inplace=True)
+        elif kind.lower()=='forecast':
+            X = self.X_base_forecast.copy()
+            X.drop('is_observed', axis=1, inplace=True)
         else:
-            X = pd.concat([id, base], axis=1)
-
-        if split is None:
-            pass
-        elif split == "train":
-            X = X.loc[X.is_observed.eq(1)]
-        elif split == "forecast":
-            X = X.loc[X.is_observed.eq(0)]
-
-        if column_query is not None:
-            for c in X.columns.tolist():
-                if column_query in c:
-                    pass
-                else:
-                    X = X.drop(columns=c)
-
+            raise ValueError("kind must be 'train', 'forecast', or None.")
+        
         return X
 
-    def get_X_cal(self, split=None):
+    def get_X_cal(self, kind=None) -> pd.DataFrame:
         """
         Returns the calendar design matrix
         """
-        df = self.get_X_id(split=split)
-        df["calendar_period"] = (
-            df["calendar_period"].astype(str).str.pad(4, fillchar="0")
-        )
-        df["calendar_period"] = df.calendar_period.apply(lambda x: f"{x}")
-        df_cal = pd.get_dummies(df[["calendar_period"]], drop_first=True)
-        out = df_cal.copy()
-
-        # ay dm columns
-        cols = df_cal.columns.tolist()
-
-        # reverse the order of the columns (to loop backwards)
-        cols.reverse()
-
-        # loop backwards through the columns
-        for i, c in enumerate(cols):
-            # if i==0, set the column equal to itself
-            if i == 0:
-                out[c] = df_cal[c]
-
-            # otherwise, add the column to the previous column
+        if self.use_cal:
+            X = self.get_X(kind=kind)
+            X = X.loc[:, X.columns.str.contains("cal")]
+            X = X.loc[:, ~X.columns.eq("calendar_period")]
+        else:
+            if kind is None:
+                qry = pd.Series(np.ones_like(self.X_id['calendar_period'].values),
+                                index=self.X_id.index).eq(1)
+            elif kind.lower() == "train":
+                qry = self.X_id['is_observed'].eq(1)
+            elif kind.lower() == "forecast":
+                qry = self.X_id['is_observed'].eq(0)
             else:
-                out[c] = df_cal[c] + out[cols[i - 1]]
+                raise ValueError("kind must be 'train', 'forecast', or None.")
 
-        out = out.astype(int)
-
-        idx = self.get_X_id(split=split).index
-        return out.loc[idx]
+        cal = self.X_id['calendar_period'][qry]
+        X = self.create_design_matrix_trends(cal,
+                                             s="calendar_period",
+                                             z=3)
+        X = X.loc[qry]
+        return cal
 
     def get_X_exposure(self, split: str = None) -> pd.DataFrame:
         """
