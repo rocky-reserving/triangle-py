@@ -24,6 +24,25 @@ def test_triangle():
     return Triangle.from_dataframe(df=df, id="t")
 
 @pytest.fixture
+def test_melted():
+    df = pd.DataFrame({
+        'accident_period':[2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003],
+        'development_period':[12, 12, 12, 12,
+                              24, 24, 24, 24,
+                              36, 36, 36, 36,
+                              48, 48, 48, 48],
+        'tri':[10, 10, 10, 10,
+                10, 10, 10, 0,
+                10, 10, 0, 0,
+                10, 0, 0, 0]
+    }).astype(float)
+
+    return df
+
+@pytest.fixture
 def test_dm_ay_levels():
     """
     build test design matrix
@@ -77,14 +96,23 @@ def test_triangle2():
     }, index=[1990, 1991, 1992, 1993])
     return Triangle.from_dataframe(df=df, id="t")
 
+@pytest.fixture
+def test_accs():
+    out =[pd.Timestamp('2000-01-01 00:00:00'),
+          pd.Timestamp('2001-01-01 00:00:00'),
+          pd.Timestamp('2002-01-01 00:00:00'),
+          pd.Timestamp('2003-01-01 00:00:00')]
+    return out
 
-# test_parameters = [test_triangle]
+@pytest.fixture
+def test_devs():
+    out = ['12', '24', '36', '48']
+    return out
 
 expected_atas = {
     'vw-all': pd.Series([2, 1.5, 1.3, 1]),
     'vw-5-tail110': pd.Series([2, 1.5, 1.3, 1.1]),
     'simple-3': pd.Series([2, 1.5, 1.3, 1.1]),
-
     'med-5-ex-hlm-tail105': pd.Series([2, 1.5, 1.3, 1.05]),
 }
 
@@ -131,7 +159,7 @@ def test_triangle_init(test_triangle: Triangle):
     assert isinstance(t.exposure, pd.Series), f"""
     TRI-006 - Triangle.exposure is not a series: {t.exposure}"""
 
-def test_acc_init(test_triangle):
+def test_acc_init(test_triangle, test_accs):
     # t = triangle_()
     t = test_triangle
     assert isinstance(t.acc, pd.Series), f"""
@@ -150,21 +178,19 @@ def test_acc_init(test_triangle):
     # did the accident years convert to datetime, with month & day 1/1?
     assert t.tri.index[0].month == 1, "TRI-010 - Accident year month is not 1"
     assert t.tri.index[0].day == 1, "TRI-011 - Accident year day is not 1"
-    assert (t.tri.index.tolist() == [pd.Timestamp('2000-01-01 00:00:00'),
-                                    pd.Timestamp('2001-01-01 00:00:00'),
-                                    pd.Timestamp('2002-01-01 00:00:00'),
-                                    pd.Timestamp('2003-01-01 00:00:00')]), """
+    assert (t.tri.index.tolist() == test_accs), """
 TRI-012 - triangle index (datetimes) is not correct"""
     assert t.n_acc == 4, "TRI-013 - Triangle.n_acc is not 4"
 
-def test_dev_init(test_triangle):
+def test_dev_init(test_triangle, test_devs):
     # t = triangle_()
     t = test_triangle
+    dev = test_devs
     # did the developmment years get read in correctly?
     assert t.n_dev == 4, "TRI-014-A - Triangle.n_dev is not 4"
-    assert t.dev.tolist() == ['12', '24', '36', '48'], f"""TRI-014-B - 
+    assert t.dev.tolist() == dev, f"""TRI-014-B - 
     Triangle.dev is not correct:
-    {t.dev.tolist()} instead of [12, 24, 36, 48]"""
+    {t.dev.tolist()} instead of {dev}"""
     assert t.dev.name == "development_period", f"""TRI-014-C -
     Triangle.dev name is not 'development_period': {t.dev.name}"""
 
@@ -742,22 +768,9 @@ def test_ult(test_triangle):
     diag: {ult}
     expected_diag: {expected_ult}"""
 
-def test_melt_triangle(test_triangle):
+def test_melt_triangle(test_triangle, test_melted):
     t = test_triangle
-    expected_melted = pd.DataFrame({
-        'accident_period':[2000, 2001, 2002, 2003,
-                           2000, 2001, 2002, 2003,
-                           2000, 2001, 2002, 2003,
-                           2000, 2001, 2002, 2003],
-        'development_period':[12, 12, 12, 12,
-                              24, 24, 24, 24,
-                              36, 36, 36, 36,
-                              48, 48, 48, 48],
-        'tri':[10, 10, 10, 10,
-                10, 10, 10, 0,
-                10, 10, 0, 0,
-                10, 0, 0, 0]
-    }).astype(float)
+    expected_melted = test_melted
 
     melted = t.melt_triangle().astype(float).fillna(0)
 
