@@ -9,6 +9,8 @@ sys.path.append("../triangle_py")
 
 from triangle_py.triangle import Triangle
 
+n_ays = 4
+n_devs = 4
 
 @pytest.fixture
 def test_triangle():
@@ -22,6 +24,86 @@ def test_triangle():
         '48':[40, np.nan, np.nan, np.nan]
     }, index=[2000, 2001, 2002, 2003])
     return Triangle.from_dataframe(df=df, id="t")
+
+@pytest.fixture
+def test_accs():
+    out =[pd.Timestamp('2000-01-01 00:00:00'),
+          pd.Timestamp('2001-01-01 00:00:00'),
+          pd.Timestamp('2002-01-01 00:00:00'),
+          pd.Timestamp('2003-01-01 00:00:00')]
+    return out
+
+@pytest.fixture
+def test_devs():
+    out = ['12', '24', '36', '48']
+    return out
+
+@pytest.fixture
+def test_diagonal():
+    return pd.Series([40, 30, 20, 10]).astype(float).values
+
+@pytest.fixture
+def test_diagonal3():
+    return pd.Series([30, 20, 10]).astype(float).values
+
+@pytest.fixture
+def test_ultimate():
+    """vol-wtd average all year ultimate"""
+    return pd.Series([40, 40, 40, 40]).astype(float).values
+
+@pytest.fixture
+def test_incremental():
+    df = pd.DataFrame(
+        np.array([[10, 10, 10, 10],
+                  [10, 10, 10, np.nan],
+                  [10, 10, np.nan, np.nan],
+                  [10, np.nan, np.nan, np.nan]]),
+        index=[2000, 2001, 2002, 2003],
+        columns=[12, 24, 36, 48])
+    return df
+
+@pytest.fixture
+def test_ata_triangle():
+    df = pd.DataFrame(
+        np.array([[2, 1.5, 1.3, np.nan],
+                  [2, 1.5, np.nan, np.nan],
+                  [2, np.nan, np.nan, np.nan],
+                  [np.nan, np.nan, np.nan, np.nan]]),
+        index=[2000, 2001, 2002, 2003],
+        columns=[12, 24, 36, 48])
+    return df
+
+@pytest.fixture
+def test_ata_averages():
+    out = {
+        'vwa-all': pd.Series([2, 1.5, 1.3, 1]),
+        'vwa-4': pd.Series([2, 1.5, 1.3, 1]),
+        'vwa-2-tail': pd.Series([2, 1.5, 1.3, 1.05]),
+        'vwa-5-tail110': pd.Series([2, 1.5, 1.3, 1.1]),
+        'simple-all': pd.Series([2, 1.5, 1.3, 1]),
+        'simple-3': pd.Series([2, 1.5, 1.3, 1]),
+        'simple-2-tail': pd.Series([2, 1.5, 1.3, 1.05]),
+        'medial-all': pd.Series([2, 1.5, 1.3, 1]),
+        'medial-all-exhigh': pd.Series([2, 1.5, 1.3, 1]),
+        'med-5-ex-hlm-tail105': pd.Series([2, 1.5, 1.3, 1.05]),
+    }
+    return out
+
+@pytest.fixture
+def test_n_cal():
+    """
+    build test calendar years
+    """
+    n_cal = n_ays + (n_devs - 1)
+    return n_cal
+
+@pytest.fixture
+def test_calendar_index():
+    out = np.array([[1, 2, 3, 4],
+                    [2, 3, 4, 5],
+                    [3, 4, 5, 6],
+                    [4, 5, 6, 7]])
+    return out
 
 @pytest.fixture
 def test_melted():
@@ -52,10 +134,6 @@ def test_dm_ay_levels():
                            2000, 2001, 2002, 2003,
                            2000, 2001, 2002, 2003,
                            2000, 2001, 2002, 2003],
-        # 'intercept':[1, 1, 1, 1,
-        #              1, 1, 1, 1,
-        #              1, 1, 1, 1,
-        #              1, 1, 1, 1],
         'accident_period_2001':[0, 1, 0, 0,
                                 0, 1, 0, 0,
                                 0, 1, 0, 0,
@@ -77,44 +155,59 @@ def test_dm_ay_trends():
     build test design matrix
     """
     df = pd.DataFrame({
-        'accident_period':[2000, 2001, 2002, 2003, 2000, 2001, 2002, 2003, 2000, 2001, 2002, 2003, 2000, 2001, 2002, 2003],
+        'accident_period':[2000, 2001, 2002, 2003, 2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003, 2000, 2001, 2002, 2003],
         'accident_period_2001':[0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1],
         'accident_period_2002':[0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1],
         'accident_period_2003':[0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]})
     return df
 
 @pytest.fixture
-def test_triangle2():
-    """
-    build test triangle 2
-    """
+def test_base_dm():
     df = pd.DataFrame({
-        '12':[10, 11, 12, 13],
-        '24':[20, 30, 40, np.nan],
-        '36':[30, 37, np.nan, np.nan],
-        '48':[40, np.nan, np.nan, np.nan]
-    }, index=[1990, 1991, 1992, 1993])
-    return Triangle.from_dataframe(df=df, id="t")
-
-@pytest.fixture
-def test_accs():
-    out =[pd.Timestamp('2000-01-01 00:00:00'),
-          pd.Timestamp('2001-01-01 00:00:00'),
-          pd.Timestamp('2002-01-01 00:00:00'),
-          pd.Timestamp('2003-01-01 00:00:00')]
-    return out
-
-@pytest.fixture
-def test_devs():
-    out = ['12', '24', '36', '48']
-    return out
-
-expected_atas = {
-    'vw-all': pd.Series([2, 1.5, 1.3, 1]),
-    'vw-5-tail110': pd.Series([2, 1.5, 1.3, 1.1]),
-    'simple-3': pd.Series([2, 1.5, 1.3, 1.1]),
-    'med-5-ex-hlm-tail105': pd.Series([2, 1.5, 1.3, 1.05]),
-}
+        'tri':[10, 10, 10, 10,
+                10, 10, 10, np.nan,
+                10, 10, np.nan, np.nan,
+                10, np.nan, np.nan, np.nan],
+        'is_observed':[1, 1, 1, 1,
+                       1, 1, 1, 0,
+                       1, 1, 0, 0,
+                       1, 0, 0, 0],
+        'accident_period':[2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003,
+                           2000, 2001, 2002, 2003],
+        'development_period':[12, 12, 12, 12,
+                              24, 24, 24, 24,
+                              36, 36, 36, 36,
+                              48, 48, 48, 48],
+        'accident_period_2001':[0, 1, 0, 0,
+                                0, 1, 0, 0,
+                                0, 1, 0, 0,
+                                0, 1, 0, 0],
+        'accident_period_2002':[0, 0, 1, 0,
+                                0, 0, 1, 0,
+                                0, 0, 1, 0,
+                                0, 0, 1, 0],
+        'accident_period_2003':[0, 0, 0, 1,
+                                0, 0, 0, 1,
+                                0, 0, 0, 1,
+                                0, 0, 0, 1],
+        'development_period_024':[0, 0, 0, 0,
+                                  1, 1, 1, 1,
+                                  1, 1, 1, 1,
+                                  1, 1, 1, 1],
+        'development_period_036':[0, 0, 0, 0,
+                                  0, 0, 0, 0,
+                                  1, 1, 1, 1,
+                                  1, 1, 1, 1],
+        'development_period_048':[0, 0, 0, 0,
+                                  0, 0, 0, 0,
+                                  0, 0, 0, 0,
+                                  1, 1, 1, 1]
+                                  
+    })
+    return df
 
 def are_triangles_equal(tri_df1:pd.DataFrame, tri_df2:pd.DataFrame) -> bool:
     """
@@ -180,25 +273,26 @@ def test_acc_init(test_triangle, test_accs):
     assert t.tri.index[0].day == 1, "TRI-011 - Accident year day is not 1"
     assert (t.tri.index.tolist() == test_accs), """
 TRI-012 - triangle index (datetimes) is not correct"""
-    assert t.n_acc == 4, "TRI-013 - Triangle.n_acc is not 4"
+    assert t.n_acc == n_ays, f"""TRI-013 - Triangle.n_acc is not {n_ays}: {t.n_acc}"""
 
 def test_dev_init(test_triangle, test_devs):
     # t = triangle_()
     t = test_triangle
     dev = test_devs
     # did the developmment years get read in correctly?
-    assert t.n_dev == 4, "TRI-014-A - Triangle.n_dev is not 4"
+    assert t.n_dev == n_devs, f"TRI-014-A - Triangle.n_dev is not {n_devs}: {t.n_dev}"
     assert t.dev.tolist() == dev, f"""TRI-014-B - 
     Triangle.dev is not correct:
     {t.dev.tolist()} instead of {dev}"""
     assert t.dev.name == "development_period", f"""TRI-014-C -
     Triangle.dev name is not 'development_period': {t.dev.name}"""
 
-def test_cal_init(test_triangle):
+def test_cal_init(test_triangle, test_n_cal):
     # t = triangle_()
     t = test_triangle
+    ncal = test_n_cal
     # did the calendar years get read in correctly?
-    assert t.n_cal == 7, f"TRI-016 - Triangle.n_cal is not 4: {t.n_cal}"
+    assert t.n_cal == ncal, f"TRI-016 - Triangle.n_cal is not {ncal}: {t.n_cal}"
 
 def test_n_rows(test_triangle):
     # t = triangle_()
@@ -338,16 +432,11 @@ def test_getTriangle(test_triangle):
     tri: {tri}
     t.tri: {t.tri}"""
 
-def test_getCalendarIndex(test_triangle):
+def test_getCalendarIndex(test_triangle, test_calendar_index):
     # t = triangle_()
     t = test_triangle
  
-    expected_calendar_index = np.array([
-        [1, 2, 3, 4],
-        [2, 3, 4, 5],
-        [3, 4, 5, 6],
-        [4, 5, 6, 7],
-    ])
+    expected_calendar_index = test_calendar_index
 
     # get the calendar index from the triangle (values to match expected_calendar_index)
     calendar_index_from_triangle = t.getCalendarIndex().values
@@ -362,7 +451,7 @@ def test_getCalendarIndex(test_triangle):
 def test_getCurCalendarIndex(test_triangle):
     # t = triangle_()
     t = test_triangle
-    expected_cur_calendar_index = 4
+    expected_cur_calendar_index = n_ays
 
     # get the current calendar index from the triangle
     cur_calendar_index_from_triangle = t.getCurCalendarIndex()
@@ -377,15 +466,10 @@ def test_getCurCalendarIndex(test_triangle):
     expected_cur_calendar_index: {expected_cur_calendar_index}"""
     
 
-def test_cum_to_inc(test_triangle):
+def test_cum_to_inc(test_triangle, test_incremental):
     # t = triangle_()
     t = test_triangle
-    expected_inc = pd.DataFrame(np.array([
-        [10, 10, 10, 10],
-        [10, 10, 10, np.nan],
-        [10, 10, np.nan, np.nan],
-        [10, np.nan, np.nan, np.nan],
-    ]), index=[2000, 2001, 2002, 2003], columns=[12, 24, 36, 48])
+    expected_inc = test_incremental
 
     # get the incremental triangle from the cumulative triangle
     inc = t.cum_to_inc(_return=True)
@@ -407,15 +491,10 @@ def test_cum_to_inc(test_triangle):
     inc: {inc}
     inc_from_triangle: {inc_from_triangle}"""
 
-def test_ata_tri(test_triangle):
+def test_ata_tri(test_triangle, test_ata_triangle):
     # t = triangle_()
     t = test_triangle
-    expected_ata = pd.DataFrame(np.array([
-        [2, 1.5, 1.3, np.nan],
-        [2, 1.5, np.nan, np.nan],
-        [2, np.nan, np.nan, np.nan],
-        [np.nan, np.nan, np.nan, np.nan]
-    ]), index=[2000, 2001, 2002, 2003], columns=[12, 24, 36, 48])
+    expected_ata = test_ata_triangle
 
     # get the ata triangle from the triangle object - round to 1 decimal place
     ata = t._ata_tri().round(1)
@@ -426,12 +505,13 @@ def test_ata_tri(test_triangle):
     ata: {ata}
     expected_ata: {expected_ata}"""
 
-def test_vwa(test_triangle):
+def test_vwa(test_triangle, test_ata_averages):
     # t = triangle_()
     t = test_triangle
-    expected_vwa_all = pd.Series([2, 1.5, 1.3, 1.0])
-    expected_vwa_4 = pd.Series([2, 1.5, 1.3, 1.0])
-    expected_vwa_2_tail = pd.Series([2, 1.5, 1.3, 1.05]).round(1)
+    
+    expected_vwa_all = test_ata_averages['vwa-all']
+    expected_vwa_4 = test_ata_averages['vwa-4']
+    expected_vwa_2_tail = test_ata_averages['vwa-2-tail'].round(1)
 
     # get the various vwa's from the triangle object (rounded)
     vwa_all = t._vwa().round(1).reset_index(drop=True)
@@ -460,9 +540,9 @@ def test_vwa(test_triangle):
     vwa_2_tail: {vwa_2_tail}
     expected_vwa_2_tail: {expected_vwa_2_tail}"""
 
-def test_simple_ave_all(test_triangle):
+def test_simple_ave_all(test_triangle, test_ata_averages):
     t = test_triangle
-    expected_simple_ave_all = pd.Series([2, 1.5, 1.3, 1.0])
+    expected_simple_ave_all = test_ata_averages['simple-all']
 
     # get the simple averages from the triangle object
     simple_ave_all = t._ave_ata('all').round(1).reset_index(drop=True)
@@ -473,9 +553,9 @@ def test_simple_ave_all(test_triangle):
     simple_ave_all: {simple_ave_all}
     expected_simple_ave_all: {expected_simple_ave_all}"""
 
-def test_simple_ave_3(test_triangle):
+def test_simple_ave_3(test_triangle, test_ata_averages):
     t = test_triangle
-    expected_simple_ave_3 = pd.Series([2, 1.5, 1.3, 1.0])
+    expected_simple_ave_3 = test_ata_averages['simple-3']
 
     # get the simple averages from the triangle object
     simple_ave_3 = t._ave_ata(3).round(1).reset_index(drop=True)
@@ -486,9 +566,9 @@ def test_simple_ave_3(test_triangle):
     simple_ave_3: {simple_ave_3}
     expected_simple_ave_3: {expected_simple_ave_3}"""
 
-def test_simple_ave_2_tail(test_triangle):
+def test_simple_ave_2_tail(test_triangle, test_ata_averages):
     t = test_triangle
-    expected_simple_ave_2_tail = pd.Series([2, 1.5, 1.3, 1.05]).round(1)
+    expected_simple_ave_2_tail = test_ata_averages['simple-2-tail'].round(1)
 
     # get the simple averages from the triangle object
     simple_ave_2_tail = t._ave_ata(2, tail=1.05).round(1).reset_index(drop=True)
@@ -499,9 +579,9 @@ def test_simple_ave_2_tail(test_triangle):
     simple_ave_2_tail: {simple_ave_2_tail}
     expected_simple_ave_2_tail: {expected_simple_ave_2_tail}"""
 
-def test_medial_all(test_triangle):
+def test_medial_all(test_triangle, test_ata_averages):
     t = test_triangle
-    expected_medial_all = pd.Series([2, 1.5, 1.3, 1.0])
+    expected_medial_all = test_ata_averages['medial-all']
 
     # get the medial averages from the triangle object
     medial_all = t._medial_ata('all').round(1).reset_index(drop=True)
@@ -512,9 +592,9 @@ def test_medial_all(test_triangle):
     medial_all: {medial_all}
     expected_medial_all: {expected_medial_all}"""
 
-def test_medial_all_exhigh(test_triangle):
+def test_medial_all_exhigh(test_triangle, test_ata_averages):
     t = test_triangle
-    expected_medial_all_exhigh = pd.Series([2, 1.5, 1.3, 1.0])
+    expected_medial_all_exhigh = test_ata_averages['medial-all-exhigh']
 
     # get the medial averages from the triangle object
     medial_all_exhigh = t._medial_ata('all', excludes='h').round(1).reset_index(drop=True)
@@ -564,9 +644,9 @@ def test_medial_5_ex_high_low(test_triangle):
     medial_5_ex_high_low: {medial_5_ex_high_low}
     expected_medial_5_ex_high_low: {expected_medial_5_ex_high_low}"""
 
-def test_medial_5_ex_high_low_mid_tail105(test_triangle):
+def test_medial_5_ex_high_low_mid_tail105(test_triangle, test_ata_averages):
     t = test_triangle
-    expected_medial_5_ex_high_low_mid_tail105 = (expected_atas['med-5-ex-hlm-tail105']
+    expected_medial_5_ex_high_low_mid_tail105 = (test_ata_averages['med-5-ex-hlm-tail105']
                                                 .round(1)
                                                 .reset_index(drop=True))
 
@@ -656,11 +736,11 @@ def test_ata_with_medial5_ex_high_low_tail105(test_triangle):
     ata_with_medial5_ex_high_low_tail105: {ata_with_medial5_ex_high_low_tail105}
     expected_ata_with_medial5_ex_high_low_tail105: {expected_ata_with_medial5_ex_high_low_tail105}"""
 
-def test_atu_vwa_all(test_triangle):
+def test_atu_vwa_all(test_triangle, test_ata_averages):
     t = test_triangle
 
     # expected atu with vwa
-    ata = expected_atas['vw-all']
+    ata = test_ata_averages['vwa-all']
     expected_atu = ata[::-1].cumprod()[::-1].round(1).reset_index(drop=True)
     print(f"expected_atu: {expected_atu}")
 
@@ -673,11 +753,11 @@ def test_atu_vwa_all(test_triangle):
     atu: {atu}
     expected_atu: {expected_atu}""" 
 
-def test_atu_vwa_5_tail(test_triangle):
+def test_atu_vwa_5_tail(test_triangle, test_ata_averages):
     t = test_triangle
 
     # expected atu with vwa
-    ata = expected_atas['vw-5-tail110']
+    ata = test_ata_averages['vwa-5-tail110']
     expected_atu = ata[::-1].cumprod()[::-1].round(1).reset_index(drop=True)
     print(f"expected_atu: {expected_atu}")
 
@@ -690,11 +770,11 @@ def test_atu_vwa_5_tail(test_triangle):
     atu: {atu}
     expected_atu: {expected_atu}""" 
 
-def test_atu_simple3(test_triangle):
+def test_atu_simple3(test_triangle, test_ata_averages):
     t = test_triangle
 
     # expected atu with vwa
-    ata = expected_atas['simple-3']
+    ata = test_ata_averages['simple-3']
     expected_atu = ata[::-1].cumprod()[::-1].round(1).reset_index(drop=True)
     print(f"expected_atu: {expected_atu}")
 
@@ -707,11 +787,11 @@ def test_atu_simple3(test_triangle):
     atu: {atu}
     expected_atu: {expected_atu}"""
     
-def test_atu_medial_5_exhlm_tail105(test_triangle):
+def test_atu_medial_5_exhlm_tail105(test_triangle, test_ata_averages):
     t = test_triangle
 
     # expected atu with vwa
-    ata = expected_atas['med-5-ex-hlm-tail105']
+    ata = test_ata_averages['med-5-ex-hlm-tail105']
     expected_atu = ata[::-1].cumprod()[::-1].round(1).reset_index(drop=True)
     print(f"expected_atu: {expected_atu}")
 
@@ -726,9 +806,9 @@ def test_atu_medial_5_exhlm_tail105(test_triangle):
     
     
 
-def test_diag(test_triangle):
+def test_diag(test_triangle, test_diagonal):
     t = test_triangle
-    expected_diag = pd.Series([40, 30, 20, 10]).astype(float).values
+    expected_diag = test_diagonal
 
     # get the diagonal from the triangle object
     diag = t.diag().values
@@ -739,24 +819,24 @@ def test_diag(test_triangle):
     diag: {diag}
     expected_diag: {expected_diag}"""
 
-def test_diag3(test_triangle):
+def test_diag3(test_triangle, test_diagonal3):
     t = test_triangle
-    expected_diag = pd.Series([30, 20, 10])
+    expected_diag = test_diagonal3
     print(f"expected_diag: {expected_diag}")
 
     # get the diagonal from the triangle object
-    diag = t.diag(calendar_year=3)
+    diag = t.diag(calendar_year=3).values
     print(f"diag: {diag}")
 
     # make sure the diagonal is the same as the expected diagonal
-    assert np.allclose(diag.values, expected_diag.values), f"""TRI-041-B -
+    assert np.allclose(diag, expected_diag), f"""TRI-041-B -
     Triangle.diag(3) did not return the same diagonal as expected:
     diag: {diag}
     expected_diag: {expected_diag}"""
 
-def test_ult(test_triangle):
+def test_ult(test_triangle, test_ultimate):
     t = test_triangle
-    expected_ult = pd.Series([40, 40, 40, 40]).astype(float).values
+    expected_ult = test_ultimate
 
     # get the ultimate from the triangle object (have already tested .diag()) 
     # and .atu() above)
@@ -907,5 +987,105 @@ def test_create_design_matrix_trends4(test_triangle, test_dm_ay_trends):
     df: {df}
     expected_df: {expected_df}"""
     
-# def test_base_design_matrix(test_triangle):
+def test_base_design_matrix(test_triangle, test_base_dm):
+    t = test_triangle
+    expected_df = test_base_dm
+    
 
+    # get the design matrix from the triangle object
+    df = t.base_design_matrix()
+
+    # drop calendar columns
+    cols_to_drop = df.columns[df.columns.str.contains('cal')].tolist()
+    df = df.drop(columns=cols_to_drop)
+
+    # loop over the columns, testing one-by-one
+    for i, col in enumerate(df.columns.tolist()):
+        if df[col].dtype != expected_df[col].dtype:
+            print(f"df[{col}].dtype: {df[col].dtype}")
+            print(f"expected_df[{col}].dtype: {expected_df[col].dtype}")
+        assert df[col].dtype == expected_df[col].dtype, f"""TRI-044-{i+1}-A -
+        Triangle.base_design_matrix did not return the same dtypes as expected:
+        df[{col}].dtype: {df[col].dtype}
+        expected_df[{col}].dtype: {expected_df[col].dtype}"""
+
+        if not df[col].equals(expected_df[col]):
+            print(f"df[{col}]: {df[col]}")
+            print(f"expected_df[{col}]: {expected_df[col]}")
+        assert df[col].equals(expected_df[col]), f"""TRI-044-{i+1}-B -
+        Difference found in column {col}:
+        df: {df[col]}
+        expected_df: {expected_df[col]}"""
+
+    if not are_dfs_equal(df,expected_df):
+        print(f"expected_df: {pd.DataFrame(expected_df, columns=df.columns.tolist())}")
+        print(f"df: {df}")
+        print(f"expected_df.shape: {expected_df.shape}")
+        
+        print(f"df.shape: {df.shape}")
+
+    # make sure the design matrix is the same as the expected design matrix
+    assert pd.testing.assert_frame_equal(df, expected_df, check_dtype=True, check_names=True, check_exact=True), f"""TRI-044 -
+    Triangle.base_design_matrix did not return the same design matrix as expected:
+    df: {df.values}
+    expected_df: {expected_df.values}"""
+
+# @pytest.fixture
+# def test_triangle():
+#     """
+#     build test triangle
+#     """
+#     df = pd.DataFrame({
+#         '12':[10, 10, 10, 10],
+#         '24':[20, 20, 20, np.nan],
+#         '36':[30, 30, np.nan, np.nan],
+#         '48':[40, np.nan, np.nan, np.nan]
+#     }, index=[2000, 2001, 2002, 2003])
+#     return Triangle.from_dataframe(df=df, id="t")
+
+# @pytest.fixture
+# def test_base_dm():
+#     df = pd.DataFrame({
+#         'tri':[10, 10, 10, 10,
+#                 10, 10, 10, np.nan,
+#                 10, 10, np.nan, np.nan,
+#                 10, np.nan, np.nan, np.nan],
+#         'is_observed':[1, 1, 1, 1,
+#                        1, 1, 1, 0,
+#                        1, 1, 0, 0,
+#                        1, 0, 0, 0],
+#         'accident_period':[2000, 2001, 2002, 2003,
+#                            2000, 2001, 2002, 2003,
+#                            2000, 2001, 2002, 2003,
+#                            2000, 2001, 2002, 2003],
+#         'development_period':[12, 12, 12, 12,
+#                               24, 24, 24, 24,
+#                               36, 36, 36, 36,
+#                               48, 48, 48, 48],
+#         'accident_period_2001':[0, 1, 0, 0,
+#                                 0, 1, 0, 0,
+#                                 0, 1, 0, 0,
+#                                 0, 1, 0, 0],
+#         'accident_period_2002':[0, 0, 1, 0,
+#                                 0, 0, 1, 0,
+#                                 0, 0, 1, 0,
+#                                 0, 0, 1, 0],
+#         'accident_period_2003':[0, 0, 0, 1,
+#                                 0, 0, 0, 1,
+#                                 0, 0, 0, 1,
+#                                 0, 0, 0, 1],
+#         'development_period_024':[0, 0, 0, 0,
+#                                   1, 1, 1, 1,
+#                                   1, 1, 1, 1,
+#                                   1, 1, 1, 1],
+#         'development_period_036':[0, 0, 0, 0,
+#                                   0, 0, 0, 0,
+#                                   1, 1, 1, 1,
+#                                   1, 1, 1, 1],
+#         'development_period_048':[0, 0, 0, 0,
+#                                   0, 0, 0, 0,
+#                                   0, 0, 0, 0,
+#                                   1, 1, 1, 1]
+                                  
+#     })
+#     return df

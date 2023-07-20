@@ -1830,9 +1830,11 @@ class Triangle:
         """
         if id_cols is None:
             id_cols = 'accident_period'
+        print(f"id_cols: {id_cols}")
 
         if value_name is None:
             value_name = 'development_period'
+        print(f"value_name: {value_name}")
 
         # melt the triangle data
         melted = self.melt_triangle(id_cols=id_cols,
@@ -1840,17 +1842,26 @@ class Triangle:
                                     value_name=value_name,
                                     _return=True,
                                     incr_tri=incr_tri)
+        print(f"melted-1: {melted}")
         
         # add calendar period:
         melted['calendar_period'] = (
             melted
             .apply(lambda x: int(x[0]) - 
                              melted['accident_period'].astype(int).min() + 
-                             int(x[1]), axis=1))
+                             int(float(x[1])/melted['development_period'].astype(float).min()), axis=1))
+        print(f"melted['accident_period']: {melted['accident_period']}")
+        print(f"melted['development_period']: {melted['development_period']}")
+        print(f"melted['calendar_period']: {melted['calendar_period']}")
+
+
         melted['is_observed'] = melted[value_name].notnull().astype(int)
+        print(f"melted['is_observed']: {melted['is_observed']}]")
 
         # create the design matrices for each column
         # accident period
+        print(f"self.acc_trends: {self.acc_trends}")
+        print(f"self.dev_trends: {self.dev_trends}")
         if self.acc_trends:
             acc = self.create_design_matrix_trends(melted['accident_period'],
                                                    s='accident_period',
@@ -1859,7 +1870,7 @@ class Triangle:
             acc = self.create_design_matrix_levels(melted['accident_period'],
                                                    s='accident_period',
                                                    z=4)
-        
+        print(f"acc: {acc}")
         # development period
         if self.dev_trends:
             dev = self.create_design_matrix_trends(melted['development_period'],
@@ -1869,7 +1880,7 @@ class Triangle:
             dev = self.create_design_matrix_levels(melted['development_period'],
                                                    s='development_period',
                                                    z=3)
-
+        print(f"dev: {dev}")
         # calendar period
         if self.cal_trends:
             cal = self.create_design_matrix_trends(melted['calendar_period'],
@@ -1879,12 +1890,13 @@ class Triangle:
             cal = self.create_design_matrix_levels(melted['calendar_period'],
                                                    s='calendar_period',
                                                    z=3)
-
+        print(f"cal: {cal}")
         # combine the design matrices
         dm_total = pd.concat(
             [melted[[value_name, 'is_observed']], acc, dev, cal],
             axis=1)
 
+        print(f"dm_total: {dm_total}")
         if return_:
             return dm_total
 
