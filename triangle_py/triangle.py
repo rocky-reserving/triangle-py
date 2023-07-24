@@ -386,41 +386,48 @@ class Triangle:
             month = 1
 
             try:
-                # Attempt to convert the origin value to an integer
-                value = int(origin)
+                # if the origin value is already datetime, extract year, month, day
+                if isinstance(origin, pd.Timestamp):
+                    return convert_to_datetime(origin.year,
+                                               origin.month,
+                                               origin.day)
+                else:
 
-                # Check if the value is a 4-digit integer
-                if 1000 <= value <= 9999:
-                    # Convert the 4-digit integer to a datetime object
-                    # assuming January as the month and the first day of the
-                    # month
-                    return convert_to_datetime(value, 1)
-                # Check if the value is a 2-digit integer
-                elif 0 <= value <= 99:
-                    # Convert the 2-digit integer to a datetime object
-                    # assuming January as the month and the first day of the
-                    # month
-                    return convert_to_datetime(value + 2000, 1)
-                # Check if the value is a 5-digit integer
-                elif 10000 <= value <= 99999:
-                    # Split the value into a 4-digit year and 1-digit quarter
-                    year, quarter = divmod(value, 10)
+                    # Attempt to convert the origin value to an integer
+                    value = int(origin)
 
-                    # Convert the year-quarter value to a datetime object
-                    # assuming the quarter is the last digit, the year is
-                    # the first 4 digits, and the month is the first month
-                    # of the quarter
-                    return convert_to_datetime(year, quarter * 3 - 2)
-                # Check if the value is a 6-digit integer
-                elif 100000 <= value <= 999999:
-                    # Split the value into a 4-digit year and 2-digit month
-                    year, month = divmod(value, 100)
+                    # Check if the value is a 4-digit integer
+                    if 1000 <= value <= 9999:
+                        # Convert the 4-digit integer to a datetime object
+                        # assuming January as the month and the first day of the
+                        # month
+                        return convert_to_datetime(value, 1)
+                    # Check if the value is a 2-digit integer
+                    elif 0 <= value <= 99:
+                        # Convert the 2-digit integer to a datetime object
+                        # assuming January as the month and the first day of the
+                        # month
+                        return convert_to_datetime(value + 2000, 1)
+                    # Check if the value is a 5-digit integer
+                    elif 10000 <= value <= 99999:
+                        # Split the value into a 4-digit year and 1-digit quarter
+                        year, quarter = divmod(value, 10)
 
-                    # Convert the year-month value to a datetime object
-                    # assuming the month is the last 2 digits, the year is
-                    # the first 4 digits, and the day is the first day of
-                    # the month
-                    return convert_to_datetime(year, month)
+                        # Convert the year-quarter value to a datetime object
+                        # assuming the quarter is the last digit, the year is
+                        # the first 4 digits, and the month is the first month
+                        # of the quarter
+                        return convert_to_datetime(year, quarter * 3 - 2)
+                    # Check if the value is a 6-digit integer
+                    elif 100000 <= value <= 999999:
+                        # Split the value into a 4-digit year and 2-digit month
+                        year, month = divmod(value, 100)
+
+                        # Convert the year-month value to a datetime object
+                        # assuming the month is the last 2 digits, the year is
+                        # the first 4 digits, and the day is the first day of
+                        # the month
+                        return convert_to_datetime(year, month)
             except ValueError:
                 # If the origin value cannot be converted to an integer,
                 # continue
@@ -1830,11 +1837,9 @@ class Triangle:
         """
         if id_cols is None:
             id_cols = 'accident_period'
-        print(f"id_cols: {id_cols}")
 
         if value_name is None:
             value_name = 'development_period'
-        print(f"value_name: {value_name}")
 
         # melt the triangle data
         melted = self.melt_triangle(id_cols=id_cols,
@@ -1842,26 +1847,18 @@ class Triangle:
                                     value_name=value_name,
                                     _return=True,
                                     incr_tri=incr_tri)
-        print(f"melted-1: {melted}")
         
         # add calendar period:
         melted['calendar_period'] = (
             melted
             .apply(lambda x: int(x[0]) - 
                              melted['accident_period'].astype(int).min() + 
-                             int(float(x[1])/melted['development_period'].astype(float).min()), axis=1))
-        print(f"melted['accident_period']: {melted['accident_period']}")
-        print(f"melted['development_period']: {melted['development_period']}")
-        print(f"melted['calendar_period']: {melted['calendar_period']}")
-
-
+                             int(float(x[1])/melted['development_period'].astype(float).min()),
+                   axis=1))
         melted['is_observed'] = melted[value_name].notnull().astype(int)
-        print(f"melted['is_observed']: {melted['is_observed']}]")
 
         # create the design matrices for each column
         # accident period
-        print(f"self.acc_trends: {self.acc_trends}")
-        print(f"self.dev_trends: {self.dev_trends}")
         if self.acc_trends:
             acc = self.create_design_matrix_trends(melted['accident_period'],
                                                    s='accident_period',
@@ -1870,7 +1867,6 @@ class Triangle:
             acc = self.create_design_matrix_levels(melted['accident_period'],
                                                    s='accident_period',
                                                    z=4)
-        print(f"acc: {acc}")
         # development period
         if self.dev_trends:
             dev = self.create_design_matrix_trends(melted['development_period'],
@@ -1880,7 +1876,6 @@ class Triangle:
             dev = self.create_design_matrix_levels(melted['development_period'],
                                                    s='development_period',
                                                    z=3)
-        print(f"dev: {dev}")
         # calendar period
         if self.cal_trends:
             cal = self.create_design_matrix_trends(melted['calendar_period'],
@@ -1890,13 +1885,11 @@ class Triangle:
             cal = self.create_design_matrix_levels(melted['calendar_period'],
                                                    s='calendar_period',
                                                    z=3)
-        print(f"cal: {cal}")
         # combine the design matrices
         dm_total = pd.concat(
             [melted[[value_name, 'is_observed']], acc, dev, cal],
             axis=1)
 
-        print(f"dm_total: {dm_total}")
         if return_:
             return dm_total
 
@@ -1921,7 +1914,7 @@ class Triangle:
         self.X_base = dm_total.drop(columns=front_cols).astype(int)
         self.X_base['is_observed'] = dm_total['is_observed'].astype(int)
         self.X_base['intercept'] = 1
-        self.X_base = self.X_base[['is_observed', 'intercept'] + self.X_base.columns.drop('is_observed').tolist()]
+        self.X_base = self.X_base[['is_observed', 'intercept'] + self.X_base.columns.drop(['is_observed', 'intercept']).tolist()]
         self.y_base = dm_total[value_name]
         self.y_base.name = "y"
 
@@ -2021,10 +2014,14 @@ class Triangle:
         """
         Returns the calendar design matrix
         """
+        
         if self.use_cal:
-            X = self.get_X(kind=kind)
-            X = X.loc[:, X.columns.str.contains("cal")]
-            X = X.loc[:, ~X.columns.eq("calendar_period")]
+            df = self.get_X(kind=kind)
+            cols = df.columns        
+            col_qry = cols.str.contains("cal") 
+            col_qry = col_qry | cols.str.contains("calendar_period")
+            df = df.loc[:, col_qry.tolist()]
+            
         else:
             if kind is None:
                 qry = pd.Series(np.ones_like(self.X_id['calendar_period'].values),
@@ -2035,24 +2032,19 @@ class Triangle:
                 qry = self.X_id['is_observed'].eq(0)
             else:
                 raise ValueError("kind must be 'train', 'forecast', or None.")
+            
+            cal = self.X_id['calendar_period']
+            X = self.create_design_matrix_trends(cal,s="calendar_period",z=4)
+            
+            df = X.loc[qry]
 
-        cal = self.X_id['calendar_period']
-        X = self.create_design_matrix_trends(cal,s="calendar_period",z=3)
-        X = X.loc[qry]
-        return X
-
-    def get_X_exposure(self, split: str = None) -> pd.DataFrame:
+        return df
+    
+    def get_X_exposure(self) -> pd.DataFrame:
         """
         Returns the exposure design matrix
         """
-        if split is None:
-            df = self.exposure
-        elif split == "train":
-            df = self.exposure_train
-        elif split == "forecast":
-            df = self.exposure_forecast
-
-        return df
+        return self.exposure
 
     def get_X_base(self, kind=None):
         """
@@ -2090,21 +2082,6 @@ class Triangle:
             df = self.X_id
 
         return df
-
-    # def get_y_id(self, kind=None):
-    #     """
-    #     Returns the labels for the base design matrix
-    #     """
-    #     if split is None:
-    #         df = self.y_id
-    #     elif split == "train":
-    #         df = self.y_id_train
-    #     elif split == "forecast":
-    #         df = self.y_id_forecast
-    #     else:
-    #         df = self.y_id
-
-    #     return df
 
     # def prep_for_cnn(self, steps=False) -> pd.DataFrame:
     #     """

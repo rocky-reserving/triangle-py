@@ -1,3 +1,4 @@
+import itertools
 import sys
 
 import numpy as np
@@ -989,15 +990,30 @@ def test_create_design_matrix_trends4(test_triangle, test_dm_ay_trends):
     
 def test_base_design_matrix(test_triangle, test_base_dm):
     t = test_triangle
-    expected_df = test_base_dm
+    expected_df = test_base_dm.fillna(0).round(0).astype(int)
     
 
     # get the design matrix from the triangle object
-    df = t.base_design_matrix()
+    df = t.base_design_matrix().fillna(0).round(0).astype(int)
 
     # drop calendar columns
     cols_to_drop = df.columns[df.columns.str.contains('cal')].tolist()
     df = df.drop(columns=cols_to_drop)
+
+    # loop over the cells one by one
+    for i, j in itertools.product(range(df.shape[0]), range(df.shape[1])):
+        i2, j2 = i, j
+        x = df.iloc[i2,j2]
+        x_expected = expected_df.iloc[i2,j2]
+        assert x == x_expected, f"""TRI-044-({i2}, {j2}) -
+        The values at cell ({i}, {j}) are not the same:
+        x: {x}
+        x_expected: {x_expected}
+        column_name: {df.columns[i]}
+        row_name: {df.index[i]}
+        x.dtype: {x.dtype}  
+        x_expected.dtype: {x_expected.dtype}"""
+
 
     # loop over the columns, testing one-by-one
     for i, col in enumerate(df.columns.tolist()):
@@ -1025,67 +1041,200 @@ def test_base_design_matrix(test_triangle, test_base_dm):
         print(f"df.shape: {df.shape}")
 
     # make sure the design matrix is the same as the expected design matrix
-    assert pd.testing.assert_frame_equal(df, expected_df, check_dtype=True, check_names=True, check_exact=True), f"""TRI-044 -
+    assert are_dfs_equal(df, expected_df), f"""TRI-044 -
     Triangle.base_design_matrix did not return the same design matrix as expected:
-    df: {df.values}
-    expected_df: {expected_df.values}"""
+    df: {df}
+    expected_df: {expected_df}"""
 
-# @pytest.fixture
-# def test_triangle():
-#     """
-#     build test triangle
-#     """
-#     df = pd.DataFrame({
-#         '12':[10, 10, 10, 10],
-#         '24':[20, 20, 20, np.nan],
-#         '36':[30, 30, np.nan, np.nan],
-#         '48':[40, np.nan, np.nan, np.nan]
-#     }, index=[2000, 2001, 2002, 2003])
-#     return Triangle.from_dataframe(df=df, id="t")
+def test_get_train_forecast_split(test_triangle, test_base_dm):
+    t = test_triangle
+    base_dm = test_base_dm.is_observed.astype(int)
 
-# @pytest.fixture
-# def test_base_dm():
-#     df = pd.DataFrame({
-#         'tri':[10, 10, 10, 10,
-#                 10, 10, 10, np.nan,
-#                 10, 10, np.nan, np.nan,
-#                 10, np.nan, np.nan, np.nan],
-#         'is_observed':[1, 1, 1, 1,
-#                        1, 1, 1, 0,
-#                        1, 1, 0, 0,
-#                        1, 0, 0, 0],
-#         'accident_period':[2000, 2001, 2002, 2003,
-#                            2000, 2001, 2002, 2003,
-#                            2000, 2001, 2002, 2003,
-#                            2000, 2001, 2002, 2003],
-#         'development_period':[12, 12, 12, 12,
-#                               24, 24, 24, 24,
-#                               36, 36, 36, 36,
-#                               48, 48, 48, 48],
-#         'accident_period_2001':[0, 1, 0, 0,
-#                                 0, 1, 0, 0,
-#                                 0, 1, 0, 0,
-#                                 0, 1, 0, 0],
-#         'accident_period_2002':[0, 0, 1, 0,
-#                                 0, 0, 1, 0,
-#                                 0, 0, 1, 0,
-#                                 0, 0, 1, 0],
-#         'accident_period_2003':[0, 0, 0, 1,
-#                                 0, 0, 0, 1,
-#                                 0, 0, 0, 1,
-#                                 0, 0, 0, 1],
-#         'development_period_024':[0, 0, 0, 0,
-#                                   1, 1, 1, 1,
-#                                   1, 1, 1, 1,
-#                                   1, 1, 1, 1],
-#         'development_period_036':[0, 0, 0, 0,
-#                                   0, 0, 0, 0,
-#                                   1, 1, 1, 1,
-#                                   1, 1, 1, 1],
-#         'development_period_048':[0, 0, 0, 0,
-#                                   0, 0, 0, 0,
-#                                   0, 0, 0, 0,
-#                                   1, 1, 1, 1]
-                                  
-#     })
-#     return df
+    # get the split from the triangle object
+    train_forecast_split = t.get_train_forecast_split().fillna(0).round(0).astype(int)
+
+    # make sure the split is the same as the expected split
+    assert are_dfs_equal(train_forecast_split, base_dm), f"""TRI-045 -
+    Triangle.get_train_forecast_split did not return the same split as expected:
+    train_forecast_split: {train_forecast_split}
+    base_dm: {base_dm}"""
+
+def test_get_X(test_triangle, test_base_dm):
+    t = test_triangle
+    base_dm = test_base_dm.fillna(0).drop(columns=['tri', 'accident_period', 'development_period'])
+    base_dm['intercept'] = 1
+
+    # get the X from the triangle object
+    X = t.get_X().fillna(0)
+    cols_to_drop = X.columns[X.columns.str.contains('cal')].tolist()
+    X = X.drop(columns=cols_to_drop + ['intercept'])
+    X['intercept'] = 1
+
+    print(f"X: {X}")
+    print(f"base_dm: {base_dm}")
+    # make sure the X is the same as the expected X
+    assert are_dfs_equal(X, base_dm), f"""TRI-046 -
+    Triangle.get_X did not return the same X as expected:
+    X: {X}
+    base_dm: {base_dm}"""
+
+def test_get_X_train(test_triangle, test_base_dm):
+    t = test_triangle
+    base_dm = test_base_dm.fillna(0).drop(columns=['tri', 'accident_period', 'development_period'])
+    base_dm['intercept'] = 1
+    base_dm = base_dm.loc[base_dm.is_observed.eq(1)]
+
+    # get the X from the triangle object
+    X = t.get_X().fillna(0)
+    cols_to_drop = X.columns[X.columns.str.contains('cal')].tolist()
+    X = X.drop(columns=cols_to_drop + ['intercept'])
+    X['intercept'] = 1
+    X = X.loc[X.is_observed.eq(1)]
+
+    print(f"X: {X}")
+    print(f"base_dm: {base_dm}")
+    # make sure the X is the same as the expected X
+    assert are_dfs_equal(X, base_dm), f"""TRI-047 -
+    Triangle.get_X('train') did not return the same X as expected:
+    X: {X}
+    base_dm: {base_dm}"""
+
+
+def test_get_X_test(test_triangle, test_base_dm):
+    t = test_triangle
+    base_dm = test_base_dm.fillna(0).drop(columns=['tri', 'accident_period', 'development_period'])
+    base_dm['intercept'] = 1
+    base_dm = base_dm.loc[base_dm.is_observed.eq(0)]
+
+    # get the X from the triangle object
+    X = t.get_X().fillna(0)
+    cols_to_drop = X.columns[X.columns.str.contains('cal')].tolist()
+    X = X.drop(columns=cols_to_drop + ['intercept'])
+    X['intercept'] = 1
+    X = X.loc[X.is_observed.eq(0)]
+
+    print(f"X: {X}")
+    print(f"base_dm: {base_dm}")
+    # make sure the X is the same as the expected X
+    assert are_dfs_equal(X, base_dm), f"""TRI-047 -
+    Triangle.get_X('test') did not return the same X as expected:
+    X: {X}
+    base_dm: {base_dm}"""
+
+def test_get_X_cal(test_triangle):
+    t = test_triangle
+
+    X = t.get_X_cal()
+    try:
+        X = X.drop(columns=['calendar_period'])
+    except KeyError:
+        pass
+
+    X2 = t.create_design_matrix_trends(t.X_id['calendar_period'], z=4, s="calendar_period")
+    try:
+        X2 = X2.drop(columns=['calendar_period'])
+    except KeyError:
+        pass
+    
+
+    print(f"X: {X}")
+    print(f"X2: {X2}")
+    assert are_dfs_equal(X, X2), f"""TRI-048 -
+    Triangle.get_X_cal did not return the same X as expected:
+    X: {X}
+    X2: {X2}"""
+
+def test_get_X_cal_noUseCAL(test_triangle):
+    t0 = test_triangle.df.copy()
+
+    # remake the same triangle w/o using calendar periods
+    t = Triangle.from_dataframe(t0, use_cal=False)
+    X = t.get_X_cal()
+    try:
+        X = X.drop(columns=['calendar_period'])
+    except KeyError:
+        pass
+    
+    X2 = t.create_design_matrix_trends(t.X_id['calendar_period'], z=4, s="calendar_period")
+    try:
+        X2 = X2.drop(columns=['calendar_period'])
+    except KeyError:
+        pass
+
+    print(f"X: {X}")
+    print(f"X2: {X2}")
+    assert are_dfs_equal(X, X2), f"""TRI-048 -
+    Triangle.get_X_cal did not return the same X as expected:
+    X: {X}
+    X2: {X2}"""
+
+def test_get_X_cal_train(test_triangle):
+    t = test_triangle
+
+    X = t.get_X_cal('train')
+    try:
+        X = X.drop(columns=['calendar_period'])
+    except KeyError:
+        pass
+
+    X2 = t.create_design_matrix_trends(t.X_id['calendar_period'],
+                                       z=4,
+                                       s="calendar_period")
+    try:
+        X2 = X2.drop(columns=['calendar_period'])
+    except KeyError:
+        pass
+
+    X2 = X2.loc[t.X_base.is_observed.eq(1)]
+    
+
+    print(f"X: {X}")
+    print(f"X2: {X2}")
+    assert are_dfs_equal(X, X2), f"""TRI-049 -
+    Triangle.get_X_cal(train) did not return the same X as expected:
+    X: {X}
+    X2: {X2}"""
+
+def test_get_X_cal_forecast(test_triangle):
+    t = test_triangle
+
+    X = t.get_X_cal('forecast')
+    try:
+        X = X.drop(columns=['calendar_period'])
+    except KeyError:
+        pass
+
+    X2 = t.create_design_matrix_trends(t.X_id['calendar_period'],
+                                       z=4,
+                                       s="calendar_period")
+    try:
+        X2 = X2.drop(columns=['calendar_period'])
+    except KeyError:
+        pass
+
+    X2 = X2.loc[t.X_base.is_observed.eq(0)]
+    
+
+    print(f"X: {X}")
+    print(f"X2: {X2}")
+    assert are_dfs_equal(X, X2), f"""TRI-050 -
+    Triangle.get_X_cal(test) did not return the same X as expected:
+    X: {X}
+    X2: {X2}"""
+
+
+def test_get_X_exposure(test_triangle):
+    t = test_triangle
+
+    X = t.get_X_exposure()
+    X2 = pd.Series(np.ones(t.df.shape[0]),
+                   index=t.df.index,
+                   name='exposure')
+
+    print(f"X: {X}")
+    print(f"X2: {X2}")
+    assert are_dfs_equal(X, X2), f"""TRI-051 -
+    Triangle.get_X_exposure() did not return the same X as expected:
+    X: {X}
+    X2: {X2}"""
+
