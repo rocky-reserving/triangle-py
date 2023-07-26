@@ -1880,6 +1880,14 @@ class Triangle:
                    axis=1))
         melted['is_observed'] = melted[value_name].notnull().astype(int)
 
+        cal_period = melted['calendar_period'].fillna(0)
+        first_accident_year = melted['accident_period'].astype(int).fillna(9999999).min()
+        melted['calendar_period'] = cal_period + first_accident_year - 1
+
+        
+        # print(f"cal period:\n {cal_period}")
+        # print(f"\nacc period:\n {first_accident_year}")
+
         # create the design matrices for each column
         # accident period
         if self.acc_trends:
@@ -1903,11 +1911,11 @@ class Triangle:
         if self.cal_trends:
             cal = self.create_design_matrix_trends(melted['calendar_period'],
                                                    s='calendar_period',
-                                                   z=3)
+                                                   z=4)
         else:
             cal = self.create_design_matrix_levels(melted['calendar_period'],
                                                    s='calendar_period',
-                                                   z=3)
+                                                   z=4)
         # combine the design matrices
         dm_total = pd.concat(
             [melted[[value_name, 'is_observed']], acc, dev, cal],
