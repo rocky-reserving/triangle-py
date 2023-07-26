@@ -1443,7 +1443,8 @@ class Triangle:
 
         # if the calendar year is not specified, return the current diagonal
         if calendar_year is None:
-            calendar_year = triangle_array.shape[0]
+            calendar_year = self.getCurCalendarYear()
+            # calendar_year = triangle_array.shape[0]
             # diagonal is a series of length equal to the number of rows in the triangle
             diag = pd.Series(np.diagonal(np.fliplr(triangle_array)), index=self.tri.index)
         # otherwise, return the specified diagonal
