@@ -1021,6 +1021,16 @@ class Triangle:
 
         return cal
 
+    def getCurCalendarYear(self) -> int:
+        """
+        Returns the current/most recent calendar period.
+        """
+        cur_idx = self.getCurCalendarIndex()
+        year_df = self.getCalendarYearIndex()
+        current_calendar_year = year_df.iloc[cur_idx-1, 0]
+        return current_calendar_year
+
+
     def cum_to_inc(
         self, cum_tri: pd.DataFrame = None, _return: bool = False
     ) -> pd.DataFrame:
