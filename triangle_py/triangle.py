@@ -737,7 +737,7 @@ class Triangle:
         df.columns = df.columns.astype(str).astype(float).astype(int)
 
         # Create and return a Triangle object
-        return cls(id=id, tri=df, triangle=df)
+        return cls(id=id, tri=df, triangle=df, use_cal=use_cal)
 
     @classmethod
     def from_csv(cls,
