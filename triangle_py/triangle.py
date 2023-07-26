@@ -678,7 +678,6 @@ class Triangle:
     @classmethod
     def from_clipboard(cls,
                        origin_columns: int = 1,
-                       headers: list = None,
                        id: Optional[str] = None,
                        use_cal:bool = True) -> "Triangle":
         """
@@ -691,9 +690,6 @@ class Triangle:
             randomly-generated ID.
         origin_columns : int
             The number of columns used for the origin period. Default is 1.
-        headers : list
-            List of column names to use. Default is None, in which case the
-            first row will be repurposed as the headers.
         use_cal : bool
             Whether or not to use calendar period effects in the linear
             model representation. Default is True.
