@@ -721,7 +721,6 @@ class Triangle:
                 df[c]
                 .astype(str)
                 .str.replace(",", "")
-                # .str.replace(".", "")
                 .str.replace(" ", "")
                 .astype(float)
             )
@@ -743,6 +742,7 @@ class Triangle:
                  use_cal:bool = True) -> "Triangle":
         """
         Create a Triangle object from data in a CSV file.
+
         Parameters:
         -----------
         filename : str
@@ -1004,6 +1004,22 @@ class Triangle:
         cur_calendar_index = col1.max()
 
         return cur_calendar_index
+
+    def getCalendarYearIndex(self) -> pd.DataFrame:
+        """
+        Calculates a calendar year index based on the year of the transaction
+        date.
+        """
+        # start with calendar index
+        cal = (self.getCalendarIndex()
+               
+                # add the index to the first year included in the origin periods
+                # (i.e. the first year in the index) then subtract 1 to get
+                # the calendar year / year in which payments made in the
+                # origin period are included
+               .apply(lambda x: x.index.to_series().dt.year.min() + x - 1))
+
+        return cal
 
     def cum_to_inc(
         self, cum_tri: pd.DataFrame = None, _return: bool = False
