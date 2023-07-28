@@ -678,7 +678,6 @@ class Triangle:
     @classmethod
     def from_clipboard(cls,
                        origin_columns: int = 1,
-                       headers: list = None,
                        id: Optional[str] = None,
                        use_cal:bool = True) -> "Triangle":
         """
@@ -691,9 +690,6 @@ class Triangle:
             randomly-generated ID.
         origin_columns : int
             The number of columns used for the origin period. Default is 1.
-        headers : list
-            List of column names to use. Default is None, in which case the
-            first row will be repurposed as the headers.
         use_cal : bool
             Whether or not to use calendar period effects in the linear
             model representation. Default is True.
@@ -725,7 +721,6 @@ class Triangle:
                 df[c]
                 .astype(str)
                 .str.replace(",", "")
-                # .str.replace(".", "")
                 .str.replace(" ", "")
                 .astype(float)
             )
@@ -737,7 +732,7 @@ class Triangle:
         df.columns = df.columns.astype(str).astype(float).astype(int)
 
         # Create and return a Triangle object
-        return cls(id=id, tri=df, triangle=df)
+        return cls(id=id, tri=df, triangle=df, use_cal=use_cal)
 
     @classmethod
     def from_csv(cls,
@@ -747,6 +742,7 @@ class Triangle:
                  use_cal:bool = True) -> "Triangle":
         """
         Create a Triangle object from data in a CSV file.
+
         Parameters:
         -----------
         filename : str
@@ -1008,6 +1004,32 @@ class Triangle:
         cur_calendar_index = col1.max()
 
         return cur_calendar_index
+
+    def getCalendarYearIndex(self) -> pd.DataFrame:
+        """
+        Calculates a calendar year index based on the year of the transaction
+        date.
+        """
+        # start with calendar index
+        cal = (self.getCalendarIndex()
+               
+                # add the index to the first year included in the origin periods
+                # (i.e. the first year in the index) then subtract 1 to get
+                # the calendar year / year in which payments made in the
+                # origin period are included
+               .apply(lambda x: x.index.to_series().dt.year.min() + x - 1))
+
+        return cal
+
+    def getCurCalendarYear(self) -> int:
+        """
+        Returns the current/most recent calendar period.
+        """
+        cur_idx = self.getCurCalendarIndex()
+        year_df = self.getCalendarYearIndex()
+        current_calendar_year = year_df.iloc[cur_idx-1, 0]
+        return current_calendar_year
+
 
     def cum_to_inc(
         self, cum_tri: pd.DataFrame = None, _return: bool = False
@@ -1421,7 +1443,8 @@ class Triangle:
 
         # if the calendar year is not specified, return the current diagonal
         if calendar_year is None:
-            calendar_year = triangle_array.shape[0]
+            calendar_year = self.getCurCalendarYear()
+            # calendar_year = triangle_array.shape[0]
             # diagonal is a series of length equal to the number of rows in the triangle
             diag = pd.Series(np.diagonal(np.fliplr(triangle_array)), index=self.tri.index)
         # otherwise, return the specified diagonal
@@ -1857,6 +1880,14 @@ class Triangle:
                    axis=1))
         melted['is_observed'] = melted[value_name].notnull().astype(int)
 
+        cal_period = melted['calendar_period'].fillna(0)
+        first_accident_year = melted['accident_period'].astype(int).fillna(9999999).min()
+        melted['calendar_period'] = cal_period + first_accident_year - 1
+
+        
+        # print(f"cal period:\n {cal_period}")
+        # print(f"\nacc period:\n {first_accident_year}")
+
         # create the design matrices for each column
         # accident period
         if self.acc_trends:
@@ -1880,11 +1911,11 @@ class Triangle:
         if self.cal_trends:
             cal = self.create_design_matrix_trends(melted['calendar_period'],
                                                    s='calendar_period',
-                                                   z=3)
+                                                   z=4)
         else:
             cal = self.create_design_matrix_levels(melted['calendar_period'],
                                                    s='calendar_period',
-                                                   z=3)
+                                                   z=4)
         # combine the design matrices
         dm_total = pd.concat(
             [melted[[value_name, 'is_observed']], acc, dev, cal],
